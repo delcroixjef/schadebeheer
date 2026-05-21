@@ -8,9 +8,8 @@ export function AbexBanner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("abex_index")
-        .select("value, period_label, updated_at")
-        .eq("is_active", true)
-        .order("updated_at", { ascending: false })
+        .select("indexwaarde, periode, ingangsdatum")
+        .order("ingangsdatum", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw error;
@@ -18,8 +17,8 @@ export function AbexBanner() {
     },
   });
 
-  const updated = data?.updated_at
-    ? new Date(data.updated_at).toLocaleDateString("nl-BE", {
+  const updated = data?.ingangsdatum
+    ? new Date(data.ingangsdatum).toLocaleDateString("nl-BE", {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -31,9 +30,9 @@ export function AbexBanner() {
       <div className="flex items-center gap-6 text-[12px] text-primary-dark">
         <div>
           <span className="text-text-muted mr-1.5">ABEX-index</span>
-          <span className="font-medium">{data?.value ?? "—"}</span>
-          {data?.period_label && (
-            <span className="text-text-secondary ml-1.5">({data.period_label})</span>
+          <span className="font-medium">{data?.indexwaarde ?? "—"}</span>
+          {data?.periode && (
+            <span className="text-text-secondary ml-1.5">({data.periode})</span>
           )}
         </div>
         <div>
