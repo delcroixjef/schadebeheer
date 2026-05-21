@@ -45,25 +45,44 @@ function parsePositiveNumber(value: unknown): number | null {
 
 // ===================== Sheet classification =====================
 
-type SheetKind = "prijs_catalogus" | "glas_calculator" | "genegeerd" | "onbekend";
+type SheetKind =
+  | "prijs_macrotool"
+  | "prijs_legacy"
+  | "glas_calculator"
+  | "genegeerd"
+  | "onbekend";
 
 type ImportRow = {
   code: string;
   omschrijving: string;
   opmerking: string | null;
+  categorie: string | null;
   eenheid: string;
   basisprijs: number;
+  maximale_basisprijs: number | null;
 };
 
 type SkippedCounts = { rubriek: number; leeg: number; formule: number };
 
-type Mapping = {
+type MacroMapping = {
+  kind: "macrotool";
   code: number;
   omschrijving: number;
   opmerking: number | null;
   eenheid: number;
   prijs: number;
 };
+
+type LegacyMapping = {
+  kind: "legacy";
+  item: number;
+  eenheid: number;
+  // Indices of the *display* (formula) columns; basisprijs cellen liggen op idx-1
+  minDisplay: number;
+  maxDisplay: number | null;
+};
+
+type Mapping = MacroMapping | LegacyMapping;
 
 type ClassifiedSheet = {
   sheetName: string;
@@ -75,25 +94,14 @@ type ClassifiedSheet = {
   rows: ImportRow[];
   skipped: SkippedCounts;
   abexCandidate: number | null;
-  preview: string[][];            // first 5 imported rows as strings
+  preview: string[][];
 };
 
-function findHeaderRow(rawRows: unknown[][]): number | null {
-  for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
-    const row = (rawRows[i] ?? []).map(norm);
-    const hasOmschrijving = row.some((c) => c === "omschrijving");
-    const hasPrijs = row.some((c) => c === "prijs" || c === "prijs/prix" || c === "prix");
-    if (hasOmschrijving && hasPrijs) return i;
-  }
-  return null;
-}
-
 function detectAbex(rawRows: unknown[][]): number | null {
-  for (let r = 0; r < Math.min(rawRows.length, 5); r++) {
+  for (let r = 0; r < Math.min(rawRows.length, 15); r++) {
     const row = rawRows[r] ?? [];
     for (let c = 0; c < row.length; c++) {
       if (norm(row[c]).includes("abex")) {
-        // Take the next non-empty cell to the right
         for (let nc = c + 1; nc < row.length; nc++) {
           const n = parsePositiveNumber(row[nc]);
           if (n !== null && n >= 100 && n <= 5000) return Math.round(n);
@@ -104,7 +112,19 @@ function detectAbex(rawRows: unknown[][]): number | null {
   return null;
 }
 
-function buildMapping(headerCells: unknown[]): Mapping | null {
+// ---------- Macrotool detection ----------
+
+function findMacroHeaderRow(rawRows: unknown[][]): number | null {
+  for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
+    const row = (rawRows[i] ?? []).map(norm);
+    const hasOmschrijving = row.some((c) => c === "omschrijving");
+    const hasPrijs = row.some((c) => c === "prijs" || c === "prijs/prix" || c === "prix");
+    if (hasOmschrijving && hasPrijs) return i;
+  }
+  return null;
+}
+
+function buildMacroMapping(headerCells: unknown[]): MacroMapping | null {
   const find = (predicate: (h: string) => boolean): number => {
     for (let i = 0; i < headerCells.length; i++) {
       if (predicate(norm(headerCells[i]))) return i;
@@ -115,10 +135,10 @@ function buildMapping(headerCells: unknown[]): Mapping | null {
   const omschrijving = find((h) => h === "omschrijving");
   const opmerkingIdx = find((h) => h === "opmerking");
   const eenheid = find((h) => h === "eenheid/unité" || h === "eenheid" || h === "eenheid/unite");
-  // first "Prijs/Prix" or "Prijs" — skip any later duplicates.
   const prijs = find((h) => h === "prijs/prix" || h === "prijs" || h === "prix");
   if (code < 0 || omschrijving < 0 || eenheid < 0 || prijs < 0) return null;
   return {
+    kind: "macrotool",
     code,
     omschrijving,
     opmerking: opmerkingIdx >= 0 ? opmerkingIdx : null,
@@ -127,58 +147,118 @@ function buildMapping(headerCells: unknown[]): Mapping | null {
   };
 }
 
-function classifySheet(sheetName: string, rawRows: unknown[][]): ClassifiedSheet {
-  const nameNorm = norm(sheetName);
+// ---------- Legacy Baloise detection ----------
 
-  // Ignored sheets
-  if (sheetName === "Backup" || sheetName === "TEMPLATE") {
-    return emptyClassified(sheetName, "genegeerd", `Tabblad "${sheetName}" wordt genegeerd.`, rawRows);
+function findLegacyHeaderRow(rawRows: unknown[][]): number | null {
+  for (let i = 0; i < Math.min(rawRows.length, 25); i++) {
+    const row = (rawRows[i] ?? []).map(norm);
+    const hasItem = row.some((c) => c === "item");
+    const hasEenheid = row.some((c) => c === "eenheid");
+    const hasMin = row.some((c) => c.includes("minimale kostprijs") || c.includes("min. kostprijs"));
+    const hasMax = row.some((c) => c.includes("maximale kostprijs") || c.includes("max. kostprijs"));
+    if (hasItem && hasEenheid && hasMin) return i;
+    // Some sheets also use "min. kostprijs" / "max. kostprijs"
+    if (hasItem && hasEenheid && hasMax) return i;
   }
+  return null;
+}
 
-  // Glas calculator detection
+function buildLegacyMapping(headerCells: unknown[]): LegacyMapping | null {
+  const find = (predicate: (h: string) => boolean): number => {
+    for (let i = 0; i < headerCells.length; i++) {
+      if (predicate(norm(headerCells[i]))) return i;
+    }
+    return -1;
+  };
+  const item = find((h) => h === "item");
+  const eenheid = find((h) => h === "eenheid");
+  const minDisplay = find((h) => h.includes("minimale kostprijs") || h.includes("min. kostprijs"));
+  const maxDisplay = find((h) => h.includes("maximale kostprijs") || h.includes("max. kostprijs"));
+  if (item < 0 || eenheid < 0 || minDisplay < 1) return null;
+  // basisprijs zit altijd in de cel net links van de min-display kolom
+  return {
+    kind: "legacy",
+    item,
+    eenheid,
+    minDisplay,
+    maxDisplay: maxDisplay >= 1 ? maxDisplay : null,
+  };
+}
+
+// ---------- Glas detection ----------
+
+function isGlasSheet(sheetName: string, rawRows: unknown[][]): boolean {
+  const nameNorm = norm(sheetName);
   const flatNorm = rawRows
     .slice(0, 25)
     .flatMap((r) => (r ?? []).map(norm))
     .join("|");
-  const isGlas =
+  return (
     nameNorm.includes("glas") ||
-    flatNorm.includes("lengte") &&
+    (flatNorm.includes("lengte") &&
       flatNorm.includes("breedte") &&
-      (flatNorm.includes("dikte glas") || flatNorm.includes("kostprijs glas"));
-  if (isGlas) {
+      (flatNorm.includes("dikte glas") || flatNorm.includes("kostprijs glas")))
+  );
+}
+
+// ---------- Main classifier ----------
+
+function classifySheet(sheetName: string, rawRows: unknown[][]): ClassifiedSheet {
+  if (sheetName === "Backup" || sheetName === "TEMPLATE") {
+    return emptyClassified(sheetName, "genegeerd", `Tabblad "${sheetName}" wordt genegeerd.`, rawRows);
+  }
+
+  if (isGlasSheet(sheetName, rawRows)) {
     return emptyClassified(
       sheetName,
       "glas_calculator",
-      "Glasberekening — apart te verwerken.",
+      "Glasberekening gevonden — apart te verwerken.",
       rawRows,
     );
   }
 
-  const headerIdx = findHeaderRow(rawRows);
-  if (headerIdx === null) {
-    return emptyClassified(sheetName, "onbekend", "Geen prijstabel-koprij gevonden.", rawRows);
-  }
-  const headerCells = rawRows[headerIdx] ?? [];
-  const mapping = buildMapping(headerCells);
-  if (!mapping) {
-    return emptyClassified(
-      sheetName,
-      "onbekend",
-      'Vereiste kolommen "Code", "Omschrijving", "Eenheid/Unité" of "Prijs/Prix" niet allemaal gevonden.',
-      rawRows,
-    );
+  // 1. Macrotool eerst (heeft expliciete 'Code' + 'Omschrijving' + 'Prijs' koprij)
+  const macroIdx = findMacroHeaderRow(rawRows);
+  if (macroIdx !== null) {
+    const headerCells = rawRows[macroIdx] ?? [];
+    const mapping = buildMacroMapping(headerCells);
+    if (mapping) {
+      return buildMacrotoolSheet(sheetName, rawRows, macroIdx, headerCells, mapping);
+    }
   }
 
+  // 2. Klassieke Baloise prijslijst (Item / Eenheid / Min / Max)
+  const legacyIdx = findLegacyHeaderRow(rawRows);
+  if (legacyIdx !== null) {
+    const headerCells = rawRows[legacyIdx] ?? [];
+    const mapping = buildLegacyMapping(headerCells);
+    if (mapping) {
+      return buildLegacySheet(sheetName, rawRows, legacyIdx, headerCells, mapping);
+    }
+  }
+
+  return emptyClassified(
+    sheetName,
+    "onbekend",
+    'Geen geldige prijsregels gevonden. Controleer of het bestand kolommen Item/Eenheid/Minimale kostprijs/Maximale kostprijs of Code/Omschrijving/Prijs bevat.',
+    rawRows,
+  );
+}
+
+function buildMacrotoolSheet(
+  sheetName: string,
+  rawRows: unknown[][],
+  headerIdx: number,
+  headerCells: unknown[],
+  mapping: MacroMapping,
+): ClassifiedSheet {
   const skipped: SkippedCounts = { rubriek: 0, leeg: 0, formule: 0 };
   const rows: ImportRow[] = [];
   for (let i = headerIdx + 1; i < rawRows.length; i++) {
     const r = rawRows[i] ?? [];
     const cells = r.map((c) => (typeof c === "string" ? c.trim() : c));
     const allEmpty = cells.every((c) => c === null || c === undefined || c === "");
-    if (allEmpty) {
-      skipped.leeg++;
-      continue;
-    }
+    if (allEmpty) { skipped.leeg++; continue; }
     const hasFormulaArtefact = cells.some(
       (c) => typeof c === "string" && (c.startsWith("=") || c.startsWith("#")),
     );
@@ -187,28 +267,22 @@ function classifySheet(sheetName: string, rawRows: unknown[][]): ClassifiedSheet
     const eenheid = String(cells[mapping.eenheid] ?? "").trim();
     const prijs = parsePositiveNumber(cells[mapping.prijs]);
 
-    if (omschrijving && (!eenheid || prijs === null) && !code) {
-      skipped.rubriek++;
-      continue;
-    }
-    if (hasFormulaArtefact && (prijs === null || !code)) {
-      skipped.formule++;
-      continue;
-    }
+    if (omschrijving && (!eenheid || prijs === null) && !code) { skipped.rubriek++; continue; }
+    if (hasFormulaArtefact && (prijs === null || !code)) { skipped.formule++; continue; }
     if (!code || !omschrijving || !eenheid || prijs === null) {
-      // category-like or partial row
       if (omschrijving && (!eenheid || prijs === null)) skipped.rubriek++;
       else skipped.leeg++;
       continue;
     }
-    const opmerking =
-      mapping.opmerking !== null ? String(cells[mapping.opmerking] ?? "").trim() : "";
+    const opmerking = mapping.opmerking !== null ? String(cells[mapping.opmerking] ?? "").trim() : "";
     rows.push({
       code,
       omschrijving,
       opmerking: opmerking || null,
+      categorie: null,
       eenheid,
       basisprijs: prijs,
+      maximale_basisprijs: null,
     });
   }
 
@@ -229,8 +303,8 @@ function classifySheet(sheetName: string, rawRows: unknown[][]): ClassifiedSheet
 
   return {
     sheetName,
-    kind: "prijs_catalogus",
-    reason: `${rows.length} geldige rijen, koprij op regel ${headerIdx + 1}.`,
+    kind: "prijs_macrotool",
+    reason: `Nieuwe Baloise macrotool — ${rows.length} prijsregels, koprij op regel ${headerIdx + 1}.`,
     headerRow: headerIdx,
     rawHeaders: headerCells.map((c) => String(c ?? "")),
     mapping,
@@ -238,11 +312,98 @@ function classifySheet(sheetName: string, rawRows: unknown[][]): ClassifiedSheet
     skipped,
     abexCandidate: detectAbex(rawRows),
     preview: rows.slice(0, 5).map((r) => [
-      r.code,
-      r.omschrijving,
-      r.opmerking ?? "",
-      r.eenheid,
-      r.basisprijs.toFixed(2),
+      r.code, r.omschrijving, r.categorie ?? "", r.opmerking ?? "",
+      r.eenheid, r.basisprijs.toFixed(2),
+      r.maximale_basisprijs != null ? r.maximale_basisprijs.toFixed(2) : "—",
+    ]),
+  };
+}
+
+function buildLegacySheet(
+  sheetName: string,
+  rawRows: unknown[][],
+  headerIdx: number,
+  headerCells: unknown[],
+  mapping: LegacyMapping,
+): ClassifiedSheet {
+  const skipped: SkippedCounts = { rubriek: 0, leeg: 0, formule: 0 };
+  const rows: ImportRow[] = [];
+  let lastCategorie: string | null = null;
+  let counter = 0;
+
+  const minBasisIdx = mapping.minDisplay - 1;
+  const maxBasisIdx = mapping.maxDisplay !== null ? mapping.maxDisplay - 1 : null;
+
+  for (let i = headerIdx + 1; i < rawRows.length; i++) {
+    const r = rawRows[i] ?? [];
+    const cells = r.map((c) => (typeof c === "string" ? c.trim() : c));
+    const allEmpty = cells.every((c) => c === null || c === undefined || c === "");
+    if (allEmpty) { skipped.leeg++; continue; }
+
+    const item = String(cells[mapping.item] ?? "").trim();
+    const eenheid = String(cells[mapping.eenheid] ?? "").trim();
+    const basisMin = parsePositiveNumber(cells[minBasisIdx]);
+    const basisMax = maxBasisIdx !== null ? parsePositiveNumber(cells[maxBasisIdx]) : null;
+
+    // Rubriekslijn: wel item, geen eenheid, geen prijzen → bewaar als categorie
+    if (item && !eenheid && basisMin === null) {
+      lastCategorie = item;
+      skipped.rubriek++;
+      continue;
+    }
+
+    // Echte prijsregel vereist item + eenheid + positieve basisprijs
+    if (!item || !eenheid || basisMin === null) {
+      // Mogelijk een formule-rij of incomplete rij
+      const hasFormulaArtefact = cells.some(
+        (c) => typeof c === "string" && (c.startsWith("=") || c.startsWith("#")),
+      );
+      if (hasFormulaArtefact) skipped.formule++;
+      else skipped.leeg++;
+      continue;
+    }
+
+    counter++;
+    rows.push({
+      code: `legacy-${String(counter).padStart(4, "0")}`,
+      omschrijving: item,
+      opmerking: null,
+      categorie: lastCategorie,
+      eenheid,
+      basisprijs: basisMin,
+      maximale_basisprijs: basisMax,
+    });
+  }
+
+  if (rows.length === 0) {
+    return {
+      sheetName,
+      kind: "onbekend",
+      reason: "Geen geldige prijsregels in tabblad gevonden (alle rijen leeg of zonder basisprijs).",
+      headerRow: headerIdx,
+      rawHeaders: headerCells.map((c) => String(c ?? "")),
+      mapping,
+      rows: [],
+      skipped,
+      abexCandidate: detectAbex(rawRows),
+      preview: [],
+    };
+  }
+
+  return {
+    sheetName,
+    kind: "prijs_legacy",
+    reason: `Klassieke Baloise prijslijst — ${rows.length} prijsregels, koprij op regel ${headerIdx + 1}.`,
+    headerRow: headerIdx,
+    rawHeaders: headerCells.map((c) => String(c ?? "")),
+    mapping,
+    rows,
+    skipped,
+    abexCandidate: detectAbex(rawRows),
+    preview: rows.slice(0, 5).map((r) => [
+      r.code, r.omschrijving, r.categorie ?? "", r.opmerking ?? "",
+      r.eenheid, r.basisprijs.toFixed(2),
+      r.maximale_basisprijs != null ? r.maximale_basisprijs.toFixed(2) : "—",
     ]),
   };
 }
@@ -279,11 +440,17 @@ function parseWorkbook(wb: XLSX.WorkBook): ClassifiedSheet[] {
   });
 }
 
+const isImportable = (k: SheetKind) => k === "prijs_macrotool" || k === "prijs_legacy";
+
 // ===================== UI =====================
 
 const KIND_BADGES: Record<SheetKind, { label: string; cls: string }> = {
-  prijs_catalogus: {
-    label: "Prijscatalogus",
+  prijs_macrotool: {
+    label: "Nieuwe Baloise macrotool",
+    cls: "bg-status-green-bg text-status-green-fg border-status-green-fg/30",
+  },
+  prijs_legacy: {
+    label: "Klassieke Baloise prijslijst",
     cls: "bg-status-green-bg text-status-green-fg border-status-green-fg/30",
   },
   glas_calculator: {
@@ -295,10 +462,11 @@ const KIND_BADGES: Record<SheetKind, { label: string; cls: string }> = {
     cls: "bg-secondary text-text-muted border-border",
   },
   onbekend: {
-    label: "Niet importeerbaar",
+    label: "Onbekend formaat",
     cls: "bg-secondary text-text-muted border-border",
   },
 };
+
 
 function ExcelImportPage() {
   const qc = useQueryClient();
