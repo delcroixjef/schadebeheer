@@ -9,10 +9,12 @@ import {
   IconUpload,
   IconChartBar,
   IconSettings,
+  IconHistory,
   
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { useSession } from "@/lib/session";
+import { usePrecedentenAvailable } from "@/lib/precedenten";
 
 
 
