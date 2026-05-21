@@ -315,6 +315,7 @@ function ExcelImportPage() {
   const [geldigVan, setGeldigVan] = useState(new Date().toISOString().slice(0, 10));
   const [importing, setImporting] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const history = useQuery({
