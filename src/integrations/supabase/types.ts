@@ -172,39 +172,39 @@ export type Database = {
       }
       import_batches: {
         Row: {
-          aantal_overgeslagen: number
-          aantal_records: number
+          aangemaakt_door: string | null
+          aangemaakt_door_naam: string | null
+          aangemaakt_op: string
           abex_basisindex: number | null
-          bestandsnaam: string
+          bron_bestand: string
           created_at: string
           geldig_van: string | null
           id: string
-          uitgevoerd_door: string | null
-          uitgevoerd_door_naam: string | null
+          status: string
           verzekeraar: string
         }
         Insert: {
-          aantal_overgeslagen?: number
-          aantal_records?: number
+          aangemaakt_door?: string | null
+          aangemaakt_door_naam?: string | null
+          aangemaakt_op?: string
           abex_basisindex?: number | null
-          bestandsnaam: string
+          bron_bestand: string
           created_at?: string
           geldig_van?: string | null
           id?: string
-          uitgevoerd_door?: string | null
-          uitgevoerd_door_naam?: string | null
+          status?: string
           verzekeraar: string
         }
         Update: {
-          aantal_overgeslagen?: number
-          aantal_records?: number
+          aangemaakt_door?: string | null
+          aangemaakt_door_naam?: string | null
+          aangemaakt_op?: string
           abex_basisindex?: number | null
-          bestandsnaam?: string
+          bron_bestand?: string
           created_at?: string
           geldig_van?: string | null
           id?: string
-          uitgevoerd_door?: string | null
-          uitgevoerd_door_naam?: string | null
+          status?: string
           verzekeraar?: string
         }
         Relationships: []
@@ -257,40 +257,57 @@ export type Database = {
         Row: {
           abex_basisindex: number | null
           basisprijs: number
+          batch_id: string | null
           bron_bestand: string | null
           categorie: string | null
+          code: string | null
           created_at: string
           eenheid: string | null
           geldig_van: string | null
           id: string
           omschrijving: string
+          opmerking: string | null
           verzekeraar: string
         }
         Insert: {
           abex_basisindex?: number | null
           basisprijs?: number
+          batch_id?: string | null
           bron_bestand?: string | null
           categorie?: string | null
+          code?: string | null
           created_at?: string
           eenheid?: string | null
           geldig_van?: string | null
           id?: string
           omschrijving: string
+          opmerking?: string | null
           verzekeraar?: string
         }
         Update: {
           abex_basisindex?: number | null
           basisprijs?: number
+          batch_id?: string | null
           bron_bestand?: string | null
           categorie?: string | null
+          code?: string | null
           created_at?: string
           eenheid?: string | null
           geldig_van?: string | null
           id?: string
           omschrijving?: string
+          opmerking?: string | null
           verzekeraar?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "referentieprijzen_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schade_lijnen: {
         Row: {
