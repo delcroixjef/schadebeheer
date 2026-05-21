@@ -523,7 +523,7 @@ function ExcelImportPage() {
       const wb = XLSX.read(buf, { type: "array" });
       const parsed = parseWorkbook(wb);
       setSheets(parsed);
-      const importable = parsed.find((p) => p.kind === "prijs_catalogus");
+      const importable = parsed.find((p) => isImportable(p.kind));
       setActiveSheet(importable?.sheetName ?? parsed[0]?.sheetName ?? null);
       const detected =
         parsed.find((p) => p.abexCandidate !== null)?.abexCandidate ?? null;
