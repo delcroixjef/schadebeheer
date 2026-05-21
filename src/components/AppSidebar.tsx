@@ -71,7 +71,7 @@ export function AppSidebar() {
       </div>
 
       <div className="flex-1 overflow-auto pb-3">
-        {sections.map((section) => (
+        {dynamicSections.map((section) => (
           <div key={section.label}>
             <div className="px-2 pt-3 pb-1 mx-2 text-[10px] font-medium text-text-muted uppercase tracking-[0.8px]">
               {section.label}
