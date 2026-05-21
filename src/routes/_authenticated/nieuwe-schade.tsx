@@ -1,9 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { IconDeviceFloppy } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
+import { VERZEKERAARS, VERZEKERAAR_KEYS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
+
+type SchadeType = (typeof SCHADE_TYPES)[number]["value"];
 
 export const Route = createFileRoute("/_authenticated/nieuwe-schade")({
   component: NewClaim,
@@ -12,22 +15,13 @@ export const Route = createFileRoute("/_authenticated/nieuwe-schade")({
 function NewClaim() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const insurers = useQuery({
-    queryKey: ["insurers"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("insurers").select("*").order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const [form, setForm] = useState({
-    customer_name: "",
-    damage_type: "",
-    damage_date: new Date().toISOString().slice(0, 10),
-    insurer_id: "",
-    amount: "",
-    notes: "",
+    klant_naam: "",
+    schade_type: "" as SchadeType | "",
+    schade_datum: new Date().toISOString().slice(0, 10),
+    verzekeraar: "" as VerzekeraarKey | "",
+    schade_omschrijving: "",
   });
 
   const mutation = useMutation({
@@ -35,14 +29,12 @@ function NewClaim() {
       const { data, error } = await supabase
         .from("dossiers")
         .insert({
-          customer_name: form.customer_name,
-          damage_type: form.damage_type,
-          damage_date: form.damage_date,
-          insurer_id: form.insurer_id || null,
-          amount: Number(form.amount) || 0,
-          notes: form.notes || null,
-          status: "in_behandeling",
-          status_label: "In behandeling",
+          klant_naam: form.klant_naam,
+          schade_type: form.schade_type || null,
+          schade_datum: form.schade_datum,
+          verzekeraar: form.verzekeraar || null,
+          schade_omschrijving: form.schade_omschrijving || null,
+          status: "concept",
         })
         .select("id")
         .single();
@@ -69,27 +61,26 @@ function NewClaim() {
           }}
         >
           <Field label="Klantnaam" required>
-            <input className={inputCls} value={form.customer_name} required onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
+            <input className={inputCls} value={form.klant_naam} required onChange={(e) => setForm({ ...form, klant_naam: e.target.value })} />
           </Field>
           <Field label="Type schade" required>
-            <input className={inputCls} value={form.damage_type} required placeholder="Bv. Waterschade" onChange={(e) => setForm({ ...form, damage_type: e.target.value })} />
-          </Field>
-          <Field label="Schadedatum" required>
-            <input type="date" className={inputCls} value={form.damage_date} required onChange={(e) => setForm({ ...form, damage_date: e.target.value })} />
-          </Field>
-          <Field label="Verzekeraar">
-            <select className={inputCls} value={form.insurer_id} onChange={(e) => setForm({ ...form, insurer_id: e.target.value })}>
+            <select className={inputCls} value={form.schade_type} required onChange={(e) => setForm({ ...form, schade_type: e.target.value as SchadeType })}>
               <option value="">— kies —</option>
-              {insurers.data?.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+              {SCHADE_TYPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </Field>
-          <Field label="Bedrag (EUR)">
-            <input type="number" min="0" step="1" className={inputCls} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <Field label="Schadedatum" required>
+            <input type="date" className={inputCls} value={form.schade_datum} required onChange={(e) => setForm({ ...form, schade_datum: e.target.value })} />
           </Field>
-          <div />
+          <Field label="Verzekeraar">
+            <select className={inputCls} value={form.verzekeraar} onChange={(e) => setForm({ ...form, verzekeraar: e.target.value as VerzekeraarKey })}>
+              <option value="">— kies —</option>
+              {VERZEKERAAR_KEYS.map((k) => <option key={k} value={k}>{VERZEKERAARS[k].name}</option>)}
+            </select>
+          </Field>
           <div className="col-span-2">
-            <Field label="Notities">
-              <textarea rows={4} className={inputCls} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            <Field label="Omschrijving">
+              <textarea rows={4} className={inputCls} value={form.schade_omschrijving} onChange={(e) => setForm({ ...form, schade_omschrijving: e.target.value })} />
             </Field>
           </div>
           <div className="col-span-2 flex items-center justify-between mt-2">
