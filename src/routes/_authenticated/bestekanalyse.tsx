@@ -385,7 +385,7 @@ function BestekanalysePage() {
       {analyse && (
         <>
           <Card className="mt-5">
-            <SectionHeading>Vergelijking per lijn</SectionHeading>
+            <SectionHeading>Vergelijking per lijn — keur elke lijn goed of af</SectionHeading>
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="text-left text-text-secondary border-b border-border">
@@ -393,36 +393,73 @@ function BestekanalysePage() {
                   <th className="py-2 font-medium text-right">Bestek klant</th>
                   <th className="py-2 font-medium text-right">Ref. eenheidsprijs</th>
                   <th className="py-2 font-medium text-right">Verschil %</th>
-                  <th className="py-2 font-medium">Oordeel</th>
+                  <th className="py-2 font-medium">AI-oordeel</th>
+                  <th className="py-2 font-medium text-right">Beslissing</th>
                 </tr>
               </thead>
               <tbody>
-                {analyse.lijnen.map((l, i) => {
-                  const chip =
-                    l.oordeel === "conform"
+                {schadeLijnen.map((l) => {
+                  const ai = l.ai_oordeel;
+                  const aiChip =
+                    ai === "conform"
                       ? { bg: "#EAF3DE", text: "#3B6D11", label: "Conform" }
-                      : l.oordeel === "licht_verhoogd"
+                      : ai === "licht_verhoogd"
                       ? { bg: "#FDF1DA", text: "#7A4D0D", label: "Licht verhoogd" }
-                      : { bg: "#FAE0E0", text: "#7A1F1F", label: "Niet conform" };
+                      : ai === "niet_conform"
+                      ? { bg: "#FAE0E0", text: "#7A1F1F", label: "Niet conform" }
+                      : { bg: "#EEE", text: "#555", label: "—" };
+                  const dec = l.beheerder_oordeel as "goedgekeurd" | "afgekeurd" | null;
                   return (
-                    <tr key={i} className="border-b border-border/60">
+                    <tr key={l.id} className="border-b border-border/60">
                       <td className="py-2">{l.omschrijving}</td>
-                      <td className="py-2 text-right">{fmtEUR(l.bestek_prijs)}</td>
-                      <td className="py-2 text-right">{fmtEUR(l.referentie_prijs)}</td>
-                      <td className="py-2 text-right">{l.afwijking_pct > 0 ? "+" : ""}{l.afwijking_pct.toFixed(1)}%</td>
+                      <td className="py-2 text-right">{fmtEUR(Number(l.eenheidsprijs_incl_abex))}</td>
+                      <td className="py-2 text-right">{l.referentieprijs_baloise != null ? fmtEUR(Number(l.referentieprijs_baloise)) : "—"}</td>
+                      <td className="py-2 text-right">
+                        {l.afwijking_percentage != null
+                          ? `${Number(l.afwijking_percentage) > 0 ? "+" : ""}${Number(l.afwijking_percentage).toFixed(1)}%`
+                          : "—"}
+                      </td>
                       <td className="py-2">
-                        <span
-                          className="inline-block px-2 py-0.5 rounded text-[11px] font-medium"
-                          style={{ background: chip.bg, color: chip.text }}
-                        >
-                          {chip.label}
+                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style={{ background: aiChip.bg, color: aiChip.text }}>
+                          {aiChip.label}
                         </span>
+                      </td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        <button
+                          disabled={oordeelMutation.isPending}
+                          onClick={() => oordeelMutation.mutate({ id: l.id, oordeel: dec === "goedgekeurd" ? null : "goedgekeurd" })}
+                          className="px-2 py-1 rounded text-[11px] font-medium border-[0.5px]"
+                          style={{
+                            background: dec === "goedgekeurd" ? "#3B6D11" : "transparent",
+                            color: dec === "goedgekeurd" ? "white" : "#3B6D11",
+                            borderColor: "#3B6D11",
+                          }}
+                        >
+                          ✓ Goedkeuren
+                        </button>{" "}
+                        <button
+                          disabled={oordeelMutation.isPending}
+                          onClick={() => oordeelMutation.mutate({ id: l.id, oordeel: dec === "afgekeurd" ? null : "afgekeurd" })}
+                          className="px-2 py-1 rounded text-[11px] font-medium border-[0.5px]"
+                          style={{
+                            background: dec === "afgekeurd" ? "#7A1F1F" : "transparent",
+                            color: dec === "afgekeurd" ? "white" : "#7A1F1F",
+                            borderColor: "#7A1F1F",
+                          }}
+                        >
+                          ✗ Afkeuren
+                        </button>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+            <div className="mt-2 text-[11px] text-text-muted">
+              {schadeLijnen.filter((l) => l.beheerder_oordeel === "goedgekeurd").length} goedgekeurd ·{" "}
+              {schadeLijnen.filter((l) => l.beheerder_oordeel === "afgekeurd").length} afgekeurd ·{" "}
+              {schadeLijnen.filter((l) => !l.beheerder_oordeel).length} nog te beoordelen
+            </div>
           </Card>
 
           <div className="mt-5 p-4 rounded-md bg-muted border-l-4 border-primary">
@@ -434,14 +471,18 @@ function BestekanalysePage() {
             <SectionHeading>Gecorrigeerde schatting</SectionHeading>
             <div className="flex items-end justify-between">
               <div>
-                <div className="text-[12px] text-text-secondary">Totaal volgens referentieprijzen</div>
+                <div className="text-[12px] text-text-secondary">Totaal goedgekeurde lijnen</div>
                 <div className="text-[22px] font-medium text-primary mt-1">
-                  {fmtEUR(analyse.lijnen.reduce((s, l) => s + (l.referentie_prijs || 0), 0))}
+                  {fmtEUR(
+                    schadeLijnen
+                      .filter((l) => l.beheerder_oordeel === "goedgekeurd")
+                      .reduce((s, l) => s + Number(l.subtotaal ?? 0), 0)
+                  )}
                 </div>
               </div>
-              <PrimaryButton onClick={() => window.location.assign("/regelingsdocumenten")}>
-                Volgende stap →
-              </PrimaryButton>
+              <Link to="/regelingsdocumenten" search={{ id: dossierId }}>
+                <PrimaryButton>Volgende stap →</PrimaryButton>
+              </Link>
             </div>
           </Card>
         </>
