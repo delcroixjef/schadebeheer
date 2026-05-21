@@ -146,6 +146,16 @@ function BestekanalysePage() {
   const analyseMutation = useMutation({
     mutationFn: async () => {
       if (!file || !dossier) throw new Error("Geen bestand of dossier");
+      if (refprijzen.length === 0) {
+        throw new Error(
+          "Geen referentieprijzen beschikbaar. Lees eerst een prijzen-Excel in via 'Excel-import'. Zonder catalogus kan de AI geen objectieve vergelijking maken."
+        );
+      }
+      if (schadeLijnen.length === 0) {
+        throw new Error(
+          "Dit dossier bevat nog geen schadelijnen (stap 2). Voer eerst de eigen schadeberekening in voordat het klantbestek geanalyseerd wordt."
+        );
+      }
       const b64 = await fileToBase64(file);
       const abex = dossier.abex_index_gebruikt ?? 1010;
       const result = await runAnalyse({
@@ -164,6 +174,7 @@ function BestekanalysePage() {
             omschrijving: r.omschrijving,
             eenheid: r.eenheid,
             basisprijs: Number(r.basisprijs),
+            abex_basisindex: r.abex_basisindex != null ? Number(r.abex_basisindex) : null,
           })),
         },
       });
@@ -182,10 +193,12 @@ function BestekanalysePage() {
       for (const line of result.lijnen) {
         const match = schadeLijnen.find((l) => l.omschrijving.toLowerCase().trim() === line.omschrijving.toLowerCase().trim());
         if (match) {
+          const oordeelDb =
+            line.oordeel === "geen_referentie" ? "niet_beoordeeld" : line.oordeel;
           await supabase
             .from("schade_lijnen")
             .update({
-              ai_oordeel: line.oordeel,
+              ai_oordeel: oordeelDb,
               referentieprijs_baloise: line.referentie_prijs,
               afwijking_percentage: line.afwijking_pct,
             })
