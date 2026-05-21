@@ -1,12 +1,14 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Navigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { IconDeviceFloppy, IconPlus, IconTrash, IconArrowRight, IconAlertTriangle } from "@tabler/icons-react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+import { IconDeviceFloppy, IconPlus, IconTrash, IconArrowRight, IconAlertTriangle, IconSparkles, IconX } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
 import { WizardSteps, type WizardStep } from "@/components/WizardSteps";
 import { Step5Regeling } from "@/components/Step5Regeling";
 import { GlasbraakCalculator } from "@/components/GlasbraakCalculator";
+import { extractBestekLijnen } from "@/lib/bestek-extract.functions";
 
 import { useSession } from "@/lib/session";
 import { formatSupabaseError } from "@/lib/supabase-error";
