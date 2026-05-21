@@ -348,7 +348,8 @@ function AuditReport() {
                         </td>
                       </tr>
                     )}
-                  </tbody>
+                  </Fragment>
+
 
                 );
               })}
