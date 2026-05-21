@@ -46,12 +46,7 @@ const sections: NavSection[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user } = useAuth();
-  const displayName =
-    (user?.user_metadata?.full_name as string | undefined) ??
-    (user?.user_metadata?.name as string | undefined) ??
-    user?.email ??
-    "Gebruiker";
+  const displayName = "Dev Gebruiker";
 
   return (
     <aside className="w-[220px] flex-shrink-0 bg-card border-r-[0.5px] border-border flex flex-col">
