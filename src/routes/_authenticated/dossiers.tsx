@@ -80,8 +80,8 @@ function DossiersPage() {
           return (
             <Link
               key={d.id}
-              to="/dossiers/$id"
-              params={{ id: d.id }}
+              to="/nieuwe-schade"
+              search={{ step: 2, id: d.id }}
               className="grid grid-cols-[1fr_1.2fr_0.8fr_0.8fr_0.8fr_60px] gap-2 px-3 py-2.5 rounded-md text-[13px] items-center border-b-[0.5px] border-border hover:bg-secondary transition-colors"
             >
               <div className="font-medium">{d.dossiernummer}</div>
