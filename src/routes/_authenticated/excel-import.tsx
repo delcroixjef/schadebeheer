@@ -907,3 +907,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
+function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b-[0.5px] border-border py-1.5 last:border-0">
+      <dt className="text-text-secondary text-[12px]">{label}</dt>
+      <dd className={`tabular-nums text-right ${strong ? "font-semibold text-foreground" : "text-foreground"}`}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function BatchRowCount({ batchId }: { batchId: string }) {
+  const { data } = useQuery({
+    queryKey: ["batch-count", batchId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("referentieprijzen")
+        .select("*", { count: "exact", head: true })
+        .eq("batch_id", batchId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  return (
+    <span className="text-right tabular-nums text-text-secondary">
+      {data === undefined ? "…" : `${data} regels`}
+    </span>
+  );
+}
