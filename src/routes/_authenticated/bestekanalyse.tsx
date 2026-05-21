@@ -95,8 +95,8 @@ function BestekanalysePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("referentieprijzen")
-        .select("omschrijving,eenheid,basisprijs")
-        .limit(500);
+        .select("omschrijving,eenheid,basisprijs,abex_basisindex")
+        .limit(2000);
       if (error) throw error;
       return data ?? [];
     },
