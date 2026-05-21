@@ -347,7 +347,8 @@ function AuditReport() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </tbody>
+
                 );
               })}
               {pageRows.length === 0 && (
