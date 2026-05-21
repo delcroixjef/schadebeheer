@@ -35,9 +35,12 @@ function readSession(): PortalSession | null {
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<PortalSession | null>(() => readSession());
+  const [session, setSession] = useState<PortalSession | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    setSession(readSession());
+    setReady(true);
     const onMessage = (e: MessageEvent) => {
       if (e.data && typeof e.data === "object" && e.data.type === "welzeker:session" && e.data.session) {
         window.__WELZEKER_SESSION__ = e.data.session as PortalSession;
@@ -47,6 +50,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  if (!ready) return null;
 
   if (!session) {
     return (

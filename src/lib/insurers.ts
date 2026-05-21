@@ -1,10 +1,10 @@
 export type VerzekeraarKey = "baloise" | "axa" | "vivium" | "ag_insurance";
 
 export const VERZEKERAARS: Record<VerzekeraarKey, { name: string; color: "blue" | "red" | "amber" | "green"; maxAuthority: number }> = {
-  baloise: { name: "Baloise", color: "blue", maxAuthority: 7500 },
-  axa: { name: "AXA", color: "red", maxAuthority: 5000 },
-  vivium: { name: "Vivium", color: "amber", maxAuthority: 6000 },
-  ag_insurance: { name: "AG Insurance", color: "green", maxAuthority: 7500 },
+  baloise: { name: "Baloise", color: "blue", maxAuthority: 10000 },
+  axa: { name: "AXA", color: "red", maxAuthority: 3500 },
+  vivium: { name: "Vivium", color: "amber", maxAuthority: 2500 },
+  ag_insurance: { name: "AG Insurance", color: "green", maxAuthority: 4000 },
 };
 
 export const VERZEKERAAR_KEYS: VerzekeraarKey[] = ["baloise", "axa", "vivium", "ag_insurance"];

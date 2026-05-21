@@ -49,8 +49,8 @@
   --color-text-muted: var(--text-muted);
 
   /* Status soft pairs */
-  --color-status-green-bg: #eef5d6;
-  --color-status-green-fg: #5a7a1a;
+  --color-status-green-bg: #eaf3de;
+  --color-status-green-fg: #3b6d11;
   --color-status-green-dot: #639922;
 
   --color-status-amber-bg: #faeeda;
