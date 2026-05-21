@@ -8,54 +8,95 @@ import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
 import { VERZEKERAARS, VERZEKERAAR_KEYS, type VerzekeraarKey } from "@/lib/insurers";
 import { formatDate } from "@/lib/format";
+import { useSession } from "@/lib/session";
+import { formatSupabaseError } from "@/lib/supabase-error";
 
 export const Route = createFileRoute("/_authenticated/excel-import")({
   component: ExcelImportPage,
 });
 
-type FieldKey = "omschrijving" | "eenheidsprijs" | "eenheid" | "categorie";
-
-const FIELD_DEFS: { key: FieldKey; label: string; required: boolean; matches: string[] }[] = [
-  { key: "omschrijving", label: "Omschrijving", required: true, matches: ["omschrijving", "beschrijving", "description"] },
-  { key: "eenheidsprijs", label: "Eenheidsprijs", required: true, matches: ["eenheidsprijs", "prijs", "price", "unit price"] },
-  { key: "eenheid", label: "Eenheid", required: false, matches: ["eenheid", "unit"] },
-  { key: "categorie", label: "Categorie", required: false, matches: ["categorie", "category", "groep"] },
-];
-
-type SheetParse = {
-  sheetName: string;
-  headers: string[];
-  rows: Record<string, unknown>[];
-  mapping: Partial<Record<FieldKey, string>>;
-  abexCandidate: number | null;
-};
+// ===================== Helpers =====================
 
 function norm(s: unknown): string {
   return String(s ?? "").trim().toLowerCase();
 }
 
-function detectMapping(headers: string[]): Partial<Record<FieldKey, string>> {
-  const m: Partial<Record<FieldKey, string>> = {};
-  for (const f of FIELD_DEFS) {
-    const found = headers.find((h) => f.matches.some((kw) => norm(h).includes(kw)));
-    if (found) m[f.key] = found;
+/**
+ * Returns a positive finite number, or null for null / undefined / empty
+ * string / 0 / negatives / non-numeric strings / formula artefacts.
+ * Never coerce null via Number() — that returns 0 and pollutes data.
+ */
+function parsePositiveNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? value : null;
   }
-  return m;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (s.startsWith("=") || s.startsWith("#")) return null; // formula or #REF!/#N/A
+  // tolerate "1.234,56" and "1,234.56"
+  const cleaned = s
+    .replace(/\s|€|EUR/gi, "")
+    .replace(/\.(?=\d{3}(\D|$))/g, "")
+    .replace(",", ".");
+  const n = Number(cleaned);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function detectAbex(rowsRaw: unknown[][]): number | null {
-  for (let r = 0; r < Math.min(rowsRaw.length, 30); r++) {
-    const row = rowsRaw[r] ?? [];
+// ===================== Sheet classification =====================
+
+type SheetKind = "prijs_catalogus" | "glas_calculator" | "genegeerd" | "onbekend";
+
+type ImportRow = {
+  code: string;
+  omschrijving: string;
+  opmerking: string | null;
+  eenheid: string;
+  basisprijs: number;
+};
+
+type SkippedCounts = { rubriek: number; leeg: number; formule: number };
+
+type Mapping = {
+  code: number;
+  omschrijving: number;
+  opmerking: number | null;
+  eenheid: number;
+  prijs: number;
+};
+
+type ClassifiedSheet = {
+  sheetName: string;
+  kind: SheetKind;
+  reason: string;
+  headerRow: number | null;       // 0-indexed
+  rawHeaders: string[];           // raw header cells
+  mapping: Mapping | null;
+  rows: ImportRow[];
+  skipped: SkippedCounts;
+  abexCandidate: number | null;
+  preview: string[][];            // first 5 imported rows as strings
+};
+
+function findHeaderRow(rawRows: unknown[][]): number | null {
+  for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+    const row = (rawRows[i] ?? []).map(norm);
+    const hasOmschrijving = row.some((c) => c === "omschrijving");
+    const hasPrijs = row.some((c) => c === "prijs" || c === "prijs/prix" || c === "prix");
+    if (hasOmschrijving && hasPrijs) return i;
+  }
+  return null;
+}
+
+function detectAbex(rawRows: unknown[][]): number | null {
+  for (let r = 0; r < Math.min(rawRows.length, 5); r++) {
+    const row = rawRows[r] ?? [];
     for (let c = 0; c < row.length; c++) {
-      const cell = norm(row[c]);
-      if (cell.includes("abex") || cell.includes("index")) {
-        // scan neighbours
-        for (const nr of [r, r + 1, r - 1]) {
-          const nrow = rowsRaw[nr] ?? [];
-          for (let nc = Math.max(0, c - 2); nc <= c + 4; nc++) {
-            const v = Number(nrow[nc]);
-            if (Number.isFinite(v) && v >= 800 && v <= 1100) return v;
-          }
+      if (norm(row[c]).includes("abex")) {
+        // Take the next non-empty cell to the right
+        for (let nc = c + 1; nc < row.length; nc++) {
+          const n = parsePositiveNumber(row[nc]);
+          if (n !== null && n >= 100 && n <= 5000) return Math.round(n);
         }
       }
     }
@@ -63,70 +104,244 @@ function detectAbex(rowsRaw: unknown[][]): number | null {
   return null;
 }
 
-function parseWorkbook(wb: XLSX.WorkBook): SheetParse[] {
+function buildMapping(headerCells: unknown[]): Mapping | null {
+  const find = (predicate: (h: string) => boolean): number => {
+    for (let i = 0; i < headerCells.length; i++) {
+      if (predicate(norm(headerCells[i]))) return i;
+    }
+    return -1;
+  };
+  const code = find((h) => h === "code");
+  const omschrijving = find((h) => h === "omschrijving");
+  const opmerkingIdx = find((h) => h === "opmerking");
+  const eenheid = find((h) => h === "eenheid/unité" || h === "eenheid" || h === "eenheid/unite");
+  // first "Prijs/Prix" or "Prijs" — skip any later duplicates.
+  const prijs = find((h) => h === "prijs/prix" || h === "prijs" || h === "prix");
+  if (code < 0 || omschrijving < 0 || eenheid < 0 || prijs < 0) return null;
+  return {
+    code,
+    omschrijving,
+    opmerking: opmerkingIdx >= 0 ? opmerkingIdx : null,
+    eenheid,
+    prijs,
+  };
+}
+
+function classifySheet(sheetName: string, rawRows: unknown[][]): ClassifiedSheet {
+  const nameNorm = norm(sheetName);
+
+  // Ignored sheets
+  if (sheetName === "Backup" || sheetName === "TEMPLATE") {
+    return emptyClassified(sheetName, "genegeerd", `Tabblad "${sheetName}" wordt genegeerd.`, rawRows);
+  }
+
+  // Glas calculator detection
+  const flatNorm = rawRows
+    .slice(0, 25)
+    .flatMap((r) => (r ?? []).map(norm))
+    .join("|");
+  const isGlas =
+    nameNorm.includes("glas") ||
+    flatNorm.includes("lengte") &&
+      flatNorm.includes("breedte") &&
+      (flatNorm.includes("dikte glas") || flatNorm.includes("kostprijs glas"));
+  if (isGlas) {
+    return emptyClassified(
+      sheetName,
+      "glas_calculator",
+      "Glasberekening — apart te verwerken.",
+      rawRows,
+    );
+  }
+
+  const headerIdx = findHeaderRow(rawRows);
+  if (headerIdx === null) {
+    return emptyClassified(sheetName, "onbekend", "Geen prijstabel-koprij gevonden.", rawRows);
+  }
+  const headerCells = rawRows[headerIdx] ?? [];
+  const mapping = buildMapping(headerCells);
+  if (!mapping) {
+    return emptyClassified(
+      sheetName,
+      "onbekend",
+      'Vereiste kolommen "Code", "Omschrijving", "Eenheid/Unité" of "Prijs/Prix" niet allemaal gevonden.',
+      rawRows,
+    );
+  }
+
+  const skipped: SkippedCounts = { rubriek: 0, leeg: 0, formule: 0 };
+  const rows: ImportRow[] = [];
+  for (let i = headerIdx + 1; i < rawRows.length; i++) {
+    const r = rawRows[i] ?? [];
+    const cells = r.map((c) => (typeof c === "string" ? c.trim() : c));
+    const allEmpty = cells.every((c) => c === null || c === undefined || c === "");
+    if (allEmpty) {
+      skipped.leeg++;
+      continue;
+    }
+    const hasFormulaArtefact = cells.some(
+      (c) => typeof c === "string" && (c.startsWith("=") || c.startsWith("#")),
+    );
+    const code = String(cells[mapping.code] ?? "").trim();
+    const omschrijving = String(cells[mapping.omschrijving] ?? "").trim();
+    const eenheid = String(cells[mapping.eenheid] ?? "").trim();
+    const prijs = parsePositiveNumber(cells[mapping.prijs]);
+
+    if (omschrijving && (!eenheid || prijs === null) && !code) {
+      skipped.rubriek++;
+      continue;
+    }
+    if (hasFormulaArtefact && (prijs === null || !code)) {
+      skipped.formule++;
+      continue;
+    }
+    if (!code || !omschrijving || !eenheid || prijs === null) {
+      // category-like or partial row
+      if (omschrijving && (!eenheid || prijs === null)) skipped.rubriek++;
+      else skipped.leeg++;
+      continue;
+    }
+    const opmerking =
+      mapping.opmerking !== null ? String(cells[mapping.opmerking] ?? "").trim() : "";
+    rows.push({
+      code,
+      omschrijving,
+      opmerking: opmerking || null,
+      eenheid,
+      basisprijs: prijs,
+    });
+  }
+
+  if (rows.length < 10) {
+    return {
+      sheetName,
+      kind: "onbekend",
+      reason: `Slechts ${rows.length} geldige rij(en) gevonden — minder dan 10.`,
+      headerRow: headerIdx,
+      rawHeaders: headerCells.map((c) => String(c ?? "")),
+      mapping,
+      rows: [],
+      skipped,
+      abexCandidate: detectAbex(rawRows),
+      preview: [],
+    };
+  }
+
+  return {
+    sheetName,
+    kind: "prijs_catalogus",
+    reason: `${rows.length} geldige rijen, koprij op regel ${headerIdx + 1}.`,
+    headerRow: headerIdx,
+    rawHeaders: headerCells.map((c) => String(c ?? "")),
+    mapping,
+    rows,
+    skipped,
+    abexCandidate: detectAbex(rawRows),
+    preview: rows.slice(0, 5).map((r) => [
+      r.code,
+      r.omschrijving,
+      r.opmerking ?? "",
+      r.eenheid,
+      r.basisprijs.toFixed(2),
+    ]),
+  };
+}
+
+function emptyClassified(
+  sheetName: string,
+  kind: SheetKind,
+  reason: string,
+  rawRows: unknown[][],
+): ClassifiedSheet {
+  return {
+    sheetName,
+    kind,
+    reason,
+    headerRow: null,
+    rawHeaders: [],
+    mapping: null,
+    rows: [],
+    skipped: { rubriek: 0, leeg: 0, formule: 0 },
+    abexCandidate: detectAbex(rawRows),
+    preview: [],
+  };
+}
+
+function parseWorkbook(wb: XLSX.WorkBook): ClassifiedSheet[] {
   return wb.SheetNames.map((sheetName) => {
     const ws = wb.Sheets[sheetName];
-    const rawRows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null }) as unknown[][];
-    // Find best header row: row with most string cells that match any known keyword
-    let headerIdx = -1;
-    let bestScore = 0;
-    for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
-      const row = rawRows[i] ?? [];
-      const score = row.reduce<number>((acc, cell) => {
-        const n = norm(cell);
-        if (!n) return acc;
-        const hit = FIELD_DEFS.some((f) => f.matches.some((kw) => n.includes(kw)));
-        return acc + (hit ? 1 : 0);
-      }, 0);
-      if (score > bestScore) {
-        bestScore = score;
-        headerIdx = i;
-      }
-    }
-    let headers: string[] = [];
-    let rows: Record<string, unknown>[] = [];
-    if (headerIdx >= 0) {
-      headers = (rawRows[headerIdx] ?? []).map((h, i) => String(h ?? `col_${i}`).trim());
-      rows = rawRows.slice(headerIdx + 1).map((r) => {
-        const obj: Record<string, unknown> = {};
-        headers.forEach((h, i) => (obj[h] = r?.[i] ?? null));
-        return obj;
-      });
-    }
-    const mapping = detectMapping(headers);
-    const abexCandidate = detectAbex(rawRows);
-    return { sheetName, headers, rows, mapping, abexCandidate };
+    const rawRows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
+      header: 1,
+      defval: null,
+      raw: true,
+    }) as unknown[][];
+    return classifySheet(sheetName, rawRows);
   });
 }
 
+// ===================== UI =====================
+
+const KIND_BADGES: Record<SheetKind, { label: string; cls: string }> = {
+  prijs_catalogus: {
+    label: "Prijscatalogus",
+    cls: "bg-status-green-bg text-status-green-fg border-status-green-fg/30",
+  },
+  glas_calculator: {
+    label: "Glasberekening — apart te verwerken",
+    cls: "bg-primary-light text-primary-dark border-primary/30",
+  },
+  genegeerd: {
+    label: "Genegeerd",
+    cls: "bg-secondary text-text-muted border-border",
+  },
+  onbekend: {
+    label: "Niet importeerbaar",
+    cls: "bg-secondary text-text-muted border-border",
+  },
+};
+
 function ExcelImportPage() {
   const qc = useQueryClient();
+  const session = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filename, setFilename] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
-  const [sheets, setSheets] = useState<SheetParse[]>([]);
+  const [sheets, setSheets] = useState<ClassifiedSheet[]>([]);
   const [activeSheet, setActiveSheet] = useState<string | null>(null);
   const [abexValue, setAbexValue] = useState<number | "">("");
+  const [abexAutoDetected, setAbexAutoDetected] = useState<number | null>(null);
+  const [abexManual, setAbexManual] = useState(false);
   const [verzekeraar, setVerzekeraar] = useState<VerzekeraarKey>("baloise");
   const [geldigVan, setGeldigVan] = useState(new Date().toISOString().slice(0, 10));
   const [importing, setImporting] = useState(false);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const history = useQuery({
-    queryKey: ["import-history"],
+    queryKey: ["import-batches"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audit_log")
-        .select("id, actie, timestamp, detail_json")
-        .eq("actie", "referentieprijzen_import")
-        .order("timestamp", { ascending: false })
+        .from("import_batches")
+        .select("*")
+        .order("aangemaakt_op", { ascending: false })
         .limit(5);
       if (error) throw error;
       return data ?? [];
     },
   });
 
+  const reset = () => {
+    setSheets([]);
+    setFilename(null);
+    setActiveSheet(null);
+    setAbexValue("");
+    setAbexAutoDetected(null);
+    setAbexManual(false);
+    setErrorBanner(null);
+  };
+
   const handleFile = useCallback(async (file: File) => {
+    setErrorBanner(null);
     if (!/\.(xlsx|xlsm)$/i.test(file.name)) {
       toast.error("Alleen .xlsx of .xlsm bestanden zijn toegestaan.");
       return;
@@ -138,10 +353,13 @@ function ExcelImportPage() {
       const wb = XLSX.read(buf, { type: "array" });
       const parsed = parseWorkbook(wb);
       setSheets(parsed);
-      const best = parsed.find((p) => p.mapping.omschrijving && p.mapping.eenheidsprijs) ?? parsed[0];
-      setActiveSheet(best?.sheetName ?? null);
-      const abex = parsed.map((p) => p.abexCandidate).find((v) => v != null) ?? null;
-      setAbexValue(abex ?? "");
+      const importable = parsed.find((p) => p.kind === "prijs_catalogus");
+      setActiveSheet(importable?.sheetName ?? parsed[0]?.sheetName ?? null);
+      const detected =
+        parsed.find((p) => p.abexCandidate !== null)?.abexCandidate ?? null;
+      setAbexAutoDetected(detected);
+      setAbexValue(detected ?? "");
+      setAbexManual(false);
     } catch (e) {
       toast.error("Kon het bestand niet lezen: " + (e as Error).message);
     } finally {
@@ -157,64 +375,50 @@ function ExcelImportPage() {
   };
 
   const sheet = sheets.find((s) => s.sheetName === activeSheet) ?? null;
-  const missingRequired = sheet
-    ? FIELD_DEFS.filter((f) => f.required && !sheet.mapping[f.key])
-    : [];
   const canImport =
-    !!sheet && missingRequired.length === 0 && abexValue !== "" && !importing;
+    !!sheet &&
+    sheet.kind === "prijs_catalogus" &&
+    sheet.rows.length > 0 &&
+    abexValue !== "" &&
+    !importing;
 
   const doImport = async () => {
-    if (!sheet || !filename) return;
+    if (!sheet || !filename || sheet.kind !== "prijs_catalogus") return;
     setImporting(true);
+    setErrorBanner(null);
+    let batchId: string | null = null;
     try {
-      // delete existing matching
-      await supabase
-        .from("referentieprijzen")
-        .delete()
-        .eq("verzekeraar", verzekeraar)
-        .eq("geldig_van", geldigVan);
-
-      const omschrijvingKey = sheet.mapping.omschrijving!;
-      const prijsKey = sheet.mapping.eenheidsprijs!;
-      const eenheidKey = sheet.mapping.eenheid;
-      const categorieKey = sheet.mapping.categorie;
-
-      let skipped = 0;
-      type InsertRow = {
-        verzekeraar: string;
-        omschrijving: string;
-        basisprijs: number;
-        eenheid: string | null;
-        categorie: string | null;
-        abex_basisindex: number;
-        geldig_van: string;
-        bron_bestand: string;
-      };
-      const inserts: InsertRow[] = [];
-      for (const row of sheet.rows) {
-        const omsch = String(row[omschrijvingKey] ?? "").trim();
-        const prijs = Number(row[prijsKey]);
-        if (!omsch || !Number.isFinite(prijs)) {
-          skipped++;
-          continue;
-        }
-        inserts.push({
+      // 1. Create a pending batch
+      const { data: batch, error: batchErr } = await supabase
+        .from("import_batches")
+        .insert({
           verzekeraar,
-          omschrijving: omsch,
-          basisprijs: prijs,
-          eenheid: eenheidKey ? String(row[eenheidKey] ?? "").trim() || null : null,
-          categorie: categorieKey ? String(row[categorieKey] ?? "").trim() || null : null,
-          abex_basisindex: Number(abexValue),
           geldig_van: geldigVan,
+          abex_basisindex: Number(abexValue),
           bron_bestand: filename,
-        });
-      }
-      if (inserts.length === 0) {
-        toast.error("Geen geldige rijen om te importeren.");
-        setImporting(false);
-        return;
-      }
-      // chunk inserts
+          status: "pending",
+          aangemaakt_door: session.userId,
+          aangemaakt_door_naam: session.displayName,
+        })
+        .select("id")
+        .single();
+      if (batchErr || !batch) throw batchErr ?? new Error("Kon batch niet aanmaken");
+      batchId = batch.id;
+
+      // 2. Insert all referentieprijzen tied to this batch
+      const inserts = sheet.rows.map((r) => ({
+        verzekeraar,
+        code: r.code,
+        omschrijving: r.omschrijving,
+        opmerking: r.opmerking,
+        eenheid: r.eenheid,
+        basisprijs: r.basisprijs,
+        abex_basisindex: Number(abexValue),
+        geldig_van: geldigVan,
+        bron_bestand: filename,
+        batch_id: batchId,
+      }));
+
       const chunkSize = 500;
       for (let i = 0; i < inserts.length; i += chunkSize) {
         const { error } = await supabase
@@ -222,26 +426,50 @@ function ExcelImportPage() {
           .insert(inserts.slice(i, i + chunkSize));
         if (error) throw error;
       }
+
+      // 3. Deactivate previous active batch, then activate this one.
+      await supabase
+        .from("import_batches")
+        .update({ status: "failed" }) // temporary: must clear active before unique index
+        .eq("verzekeraar", verzekeraar)
+        .eq("status", "active");
+
+      const { error: actErr } = await supabase
+        .from("import_batches")
+        .update({ status: "active" })
+        .eq("id", batchId);
+      if (actErr) throw actErr;
+
       await supabase.from("audit_log").insert({
         actie: "referentieprijzen_import",
+        uitgevoerd_door: session.userId,
         detail_json: {
+          batch_id: batchId,
           filename,
           verzekeraar,
           geldig_van: geldigVan,
           abex_basisindex: Number(abexValue),
           imported: inserts.length,
-          skipped,
+          skipped: sheet.skipped,
           sheet: sheet.sheetName,
         },
       });
-      toast.success(`${inserts.length} referentieprijzen geïmporteerd (${skipped} overgeslagen).`);
-      setSheets([]);
-      setFilename(null);
-      setActiveSheet(null);
-      setAbexValue("");
-      await qc.invalidateQueries({ queryKey: ["import-history"] });
+
+      toast.success(
+        `${inserts.length} referentieprijzen geïmporteerd ` +
+          `(rubriek: ${sheet.skipped.rubriek}, leeg: ${sheet.skipped.leeg}, formule: ${sheet.skipped.formule}).`,
+      );
+      reset();
+      await qc.invalidateQueries({ queryKey: ["import-batches"] });
     } catch (e) {
-      toast.error("Import mislukt: " + (e as Error).message);
+      // 4. Mark batch as failed; previous active batch stays untouched if we never reached step 3.
+      if (batchId) {
+        await supabase.from("import_batches").update({ status: "failed" }).eq("id", batchId);
+        await supabase.from("referentieprijzen").delete().eq("batch_id", batchId);
+      }
+      const msg = formatSupabaseError(e);
+      setErrorBanner(`Import mislukt — vorige prijslijst blijft actief. ${msg}`);
+      toast.error("Import mislukt: " + msg);
     } finally {
       setImporting(false);
     }
@@ -285,155 +513,188 @@ function ExcelImportPage() {
         </Card>
       )}
 
-      {sheet && (
+      {sheets.length > 0 && (
         <>
-          <Card className="mb-4">
-            <SectionHeading>Validatie — {filename}</SectionHeading>
+          {errorBanner && (
+            <div className="mb-4 rounded-md border-[0.5px] border-status-red-fg/40 bg-status-red-bg text-status-red-fg px-3 py-2 text-[12px]">
+              {errorBanner}
+            </div>
+          )}
 
-            {sheets.length > 1 && (
-              <div className="flex gap-1.5 mb-4 flex-wrap">
-                {sheets.map((s) => (
+          <Card className="mb-4">
+            <SectionHeading>Tabbladen — {filename}</SectionHeading>
+            <div className="flex gap-1.5 mb-4 flex-wrap">
+              {sheets.map((s) => {
+                const badge = KIND_BADGES[s.kind];
+                const isActive = s.sheetName === activeSheet;
+                return (
                   <button
                     key={s.sheetName}
                     onClick={() => setActiveSheet(s.sheetName)}
-                    className={`px-3 py-1 rounded-full text-[12px] border-[0.5px] ${
-                      s.sheetName === activeSheet
-                        ? "bg-primary-light border-primary text-primary-dark"
-                        : "border-border text-text-secondary hover:bg-secondary"
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-[12px] border-[0.5px] flex items-center gap-2 ${
+                      isActive ? "ring-1 ring-primary" : ""
+                    } ${badge.cls}`}
+                    title={s.reason}
                   >
-                    {s.sheetName}
+                    <span className="font-medium">{s.sheetName}</span>
+                    <span className="opacity-70">· {badge.label}</span>
                   </button>
-                ))}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.5px] text-text-secondary mb-2">
-                  Kolommapping
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {FIELD_DEFS.map((f) => {
-                    const matched = sheet.mapping[f.key];
-                    return (
-                      <div key={f.key} className="flex items-center justify-between text-[13px] border-b-[0.5px] border-border py-1.5">
-                        <span>
-                          <span className="text-text-secondary">{f.label}</span>
-                          {f.required && <span className="text-destructive ml-1">*</span>}
-                        </span>
-                        {matched ? (
-                          <span className="flex items-center gap-1.5 text-status-green-fg">
-                            <IconCheck size={14} />
-                            <span className="font-medium">{matched}</span>
-                          </span>
-                        ) : f.required ? (
-                          <span className="flex items-center gap-1.5 text-destructive">
-                            <IconX size={14} />
-                            <span>niet gevonden</span>
-                          </span>
-                        ) : (
-                          <span className="text-text-muted text-[12px]">— optioneel</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {missingRequired.length > 0 && (
-                  <div className="mt-3 flex items-start gap-2 bg-status-red-bg text-status-red-fg text-[12px] rounded-md p-2.5">
-                    <IconAlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-                    <div>
-                      Vereiste kolom niet gevonden:{" "}
-                      {missingRequired.map((m) => m.label).join(", ")}. Kies een ander tabblad of controleer het bestand.
-                    </div>
-                  </div>
+                );
+              })}
+            </div>
+            {sheet && (
+              <div className="text-[12px] text-text-secondary">
+                {sheet.reason}
+                {sheet.headerRow !== null && (
+                  <> · koprij regel {sheet.headerRow + 1}</>
                 )}
               </div>
+            )}
+          </Card>
 
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.5px] text-text-secondary mb-2">
-                  Importinstellingen
+          {sheet && sheet.kind === "prijs_catalogus" && sheet.mapping && (
+            <>
+              <Card className="mb-4">
+                <SectionHeading>Validatie</SectionHeading>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.5px] text-text-secondary mb-2">
+                      Kolommapping
+                    </div>
+                    <MappingRow label="Code" header={sheet.rawHeaders[sheet.mapping.code]} ok />
+                    <MappingRow label="Omschrijving" header={sheet.rawHeaders[sheet.mapping.omschrijving]} ok />
+                    <MappingRow
+                      label="Opmerking"
+                      header={sheet.mapping.opmerking !== null ? sheet.rawHeaders[sheet.mapping.opmerking] : "—"}
+                      ok={sheet.mapping.opmerking !== null}
+                      optional
+                    />
+                    <MappingRow label="Eenheid" header={sheet.rawHeaders[sheet.mapping.eenheid]} ok />
+                    <MappingRow label="Basisprijs" header={sheet.rawHeaders[sheet.mapping.prijs]} ok />
+                    <div className="mt-3 text-[11px] text-text-muted">
+                      Genegeerde kolommen: Description, Remarque, Aantal, Totaal, tweede Prijs, lege eerste kolom.
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.5px] text-text-secondary mb-2">
+                      Importinstellingen
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <Field label="Verzekeraar">
+                        <select
+                          className="w-full px-3 py-2 text-[13px] bg-secondary rounded-md border-[0.5px] border-border"
+                          value={verzekeraar}
+                          onChange={(e) => setVerzekeraar(e.target.value as VerzekeraarKey)}
+                        >
+                          {VERZEKERAAR_KEYS.map((k) => (
+                            <option key={k} value={k}>
+                              {VERZEKERAARS[k].name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Geldig vanaf">
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 text-[13px] bg-secondary rounded-md border-[0.5px] border-border"
+                          value={geldigVan}
+                          onChange={(e) => setGeldigVan(e.target.value)}
+                        />
+                      </Field>
+                      <Field
+                        label={
+                          abexManual
+                            ? "ABEX Basisindex (handmatig ingevoerd)"
+                            : abexAutoDetected !== null
+                              ? `ABEX Basisindex (automatisch gedetecteerd: ${abexAutoDetected})`
+                              : "ABEX Basisindex (niet gevonden — vul handmatig in)"
+                        }
+                      >
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 text-[13px] bg-secondary rounded-md border-[0.5px] border-border"
+                          value={abexValue}
+                          onChange={(e) => {
+                            const v = e.target.value === "" ? "" : Number(e.target.value);
+                            setAbexValue(v);
+                            setAbexManual(v !== abexAutoDetected);
+                          }}
+                          placeholder="bv. 1048"
+                        />
+                      </Field>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-3">
-                  <Field label="Verzekeraar">
-                    <select
-                      className="input"
-                      value={verzekeraar}
-                      onChange={(e) => setVerzekeraar(e.target.value as VerzekeraarKey)}
-                    >
-                      {VERZEKERAAR_KEYS.map((k) => (
-                        <option key={k} value={k}>
-                          {VERZEKERAARS[k].name}
-                        </option>
+              </Card>
+
+              <Card className="mb-4">
+                <SectionHeading>Voorbeeld — eerste 5 geldige rijen</SectionHeading>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[12px]">
+                    <thead>
+                      <tr className="text-left text-text-secondary uppercase tracking-[0.5px] text-[11px] border-b-[0.5px] border-border">
+                        <th className="py-2 pr-3 font-medium">Code</th>
+                        <th className="py-2 pr-3 font-medium">Omschrijving</th>
+                        <th className="py-2 pr-3 font-medium">Opmerking</th>
+                        <th className="py-2 pr-3 font-medium">Eenheid</th>
+                        <th className="py-2 pr-3 font-medium text-right">Basisprijs</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sheet.preview.map((row, i) => (
+                        <tr key={i} className="border-b-[0.5px] border-border">
+                          {row.map((c, j) => (
+                            <td
+                              key={j}
+                              className={`py-1.5 pr-3 ${j === 4 ? "text-right tabular-nums" : "text-text-secondary"}`}
+                            >
+                              {c}
+                            </td>
+                          ))}
+                        </tr>
                       ))}
-                    </select>
-                  </Field>
-                  <Field label="Geldig vanaf">
-                    <input
-                      type="date"
-                      className="input"
-                      value={geldigVan}
-                      onChange={(e) => setGeldigVan(e.target.value)}
-                    />
-                  </Field>
-                  <Field label={`ABEX basisindex ${sheet.abexCandidate ? "(gedetecteerd)" : "(handmatig)"}`}>
-                    <input
-                      type="number"
-                      className="input"
-                      value={abexValue}
-                      onChange={(e) => setAbexValue(e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="bv. 958"
-                    />
-                  </Field>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="text-[11px] text-text-muted mt-2 flex flex-wrap gap-3">
+                  <span>{sheet.rows.length} geldige rijen</span>
+                  <span>· rubriek-rijen overgeslagen: {sheet.skipped.rubriek}</span>
+                  <span>· lege rijen overgeslagen: {sheet.skipped.leeg}</span>
+                  <span>· formule-rijen overgeslagen: {sheet.skipped.formule}</span>
+                </div>
+              </Card>
+
+              <div className="flex items-center gap-3 mb-6">
+                <PrimaryButton onClick={doImport} disabled={!canImport}>
+                  {importing ? "Importeren…" : `Importeer ${sheet.rows.length} rijen`}
+                </PrimaryButton>
+                <button onClick={reset} className="text-[13px] text-text-secondary hover:text-foreground">
+                  Annuleren
+                </button>
+              </div>
+            </>
+          )}
+
+          {sheet && sheet.kind !== "prijs_catalogus" && (
+            <Card className="mb-4">
+              <div className="flex items-start gap-3 text-[13px]">
+                <IconAlertTriangle size={16} className="mt-0.5 text-text-muted flex-shrink-0" />
+                <div>
+                  <div className="font-medium">{KIND_BADGES[sheet.kind].label}</div>
+                  <div className="text-text-secondary">{sheet.reason}</div>
+                  <div className="text-text-muted mt-1">
+                    Kies een ander tabblad hierboven om te importeren.
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-
-          <Card className="mb-4">
-            <SectionHeading>Voorbeeld (eerste 5 rijen)</SectionHeading>
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="text-left text-text-secondary uppercase tracking-[0.5px] text-[11px] border-b-[0.5px] border-border">
-                    {sheet.headers.map((h) => (
-                      <th key={h} className="py-2 pr-3 font-medium">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sheet.rows.slice(0, 5).map((r, i) => (
-                    <tr key={i} className="border-b-[0.5px] border-border">
-                      {sheet.headers.map((h) => (
-                        <td key={h} className="py-1.5 pr-3 text-text-secondary">
-                          {String(r[h] ?? "")}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="text-[11px] text-text-muted mt-2">
-              {sheet.rows.length} totaal rijen gevonden in tabblad "{sheet.sheetName}"
-            </div>
-          </Card>
-
-          <div className="flex items-center gap-3 mb-6">
-            <PrimaryButton onClick={doImport} disabled={!canImport}>
-              {importing ? "Importeren…" : `Importeer ${sheet.rows.length} rijen`}
-            </PrimaryButton>
-            <button
-              onClick={() => {
-                setSheets([]);
-                setFilename(null);
-                setActiveSheet(null);
-              }}
-              className="text-[13px] text-text-secondary hover:text-foreground"
-            >
-              Annuleren
-            </button>
-          </div>
+              <div className="mt-4">
+                <button onClick={reset} className="text-[13px] text-text-secondary hover:text-foreground">
+                  Annuleren en ander bestand kiezen
+                </button>
+              </div>
+            </Card>
+          )}
         </>
       )}
 
@@ -441,36 +702,85 @@ function ExcelImportPage() {
         <SectionHeading>Recente imports</SectionHeading>
         {history.data && history.data.length > 0 ? (
           <div>
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
+            <div className="grid grid-cols-[2fr_1fr_1fr_0.7fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
               <span>Bestand</span>
               <span>Verzekeraar</span>
               <span>Geldig van</span>
-              <span>Records</span>
+              <span>ABEX</span>
+              <span>Status</span>
               <span>Datum</span>
             </div>
-            {history.data.map((h) => {
-              const d = (h.detail_json ?? {}) as Record<string, unknown>;
-              return (
-                <div
-                  key={h.id}
-                  className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
-                >
-                  <span className="truncate">{String(d.filename ?? "—")}</span>
-                  <span className="text-text-secondary">
-                    {VERZEKERAARS[(d.verzekeraar as VerzekeraarKey) ?? "baloise"]?.name ?? String(d.verzekeraar ?? "—")}
-                  </span>
-                  <span className="text-text-secondary">{d.geldig_van ? formatDate(String(d.geldig_van)) : "—"}</span>
-                  <span className="font-medium">{String(d.imported ?? 0)}</span>
-                  <span className="text-text-muted text-[12px]">{formatDate(h.timestamp)}</span>
-                </div>
-              );
-            })}
+            {history.data.map((b) => (
+              <div
+                key={b.id}
+                className="grid grid-cols-[2fr_1fr_1fr_0.7fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
+              >
+                <span className="truncate" title={b.bron_bestand ?? ""}>{b.bron_bestand ?? "—"}</span>
+                <span className="text-text-secondary">
+                  {VERZEKERAARS[(b.verzekeraar as VerzekeraarKey) ?? "baloise"]?.name ?? String(b.verzekeraar ?? "—")}
+                </span>
+                <span className="text-text-secondary">{b.geldig_van ? formatDate(String(b.geldig_van)) : "—"}</span>
+                <span className="tabular-nums">{b.abex_basisindex ?? "—"}</span>
+                <StatusPill status={b.status as string} />
+                <span className="text-text-muted text-[12px]">{formatDate(b.aangemaakt_op as string)}</span>
+              </div>
+            ))}
           </div>
         ) : (
           <p className="text-[13px] text-text-muted">Nog geen imports.</p>
         )}
       </Card>
     </>
+  );
+}
+
+function MappingRow({
+  label,
+  header,
+  ok,
+  optional,
+}: {
+  label: string;
+  header: string | undefined;
+  ok: boolean;
+  optional?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between text-[13px] border-b-[0.5px] border-border py-1.5">
+      <span className="text-text-secondary">
+        {label}
+        {optional && <span className="text-text-muted text-[11px] ml-1">(optioneel)</span>}
+      </span>
+      {ok ? (
+        <span className="flex items-center gap-1.5 text-status-green-fg">
+          <IconCheck size={14} />
+          <span className="font-medium">{header || "—"}</span>
+        </span>
+      ) : (
+        <span className="flex items-center gap-1.5 text-text-muted">
+          <IconX size={14} />
+          <span>niet gevonden</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    active: "bg-status-green-bg text-status-green-fg",
+    pending: "bg-primary-light text-primary-dark",
+    failed: "bg-status-red-bg text-status-red-fg",
+  };
+  const label: Record<string, string> = {
+    active: "Actief",
+    pending: "Bezig",
+    failed: "Mislukt",
+  };
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium ${map[status] ?? "bg-secondary text-text-muted"}`}>
+      {label[status] ?? status}
+    </span>
   );
 }
 
