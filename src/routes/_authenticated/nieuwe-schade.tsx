@@ -560,3 +560,240 @@ function Field({ label, required, children }: { label: string; required?: boolea
     </label>
   );
 }
+
+// ============ Bestek-drop in Step 2 (AI extractie) ============
+
+const ACCEPTED_MIMES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+const ACCEPTED_EXTS = new Set(["pdf", "jpg", "jpeg", "png"]);
+const MAX_BESTEK_BYTES = 10 * 1024 * 1024;
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const b64 = result.split(",")[1];
+      if (!b64) reject(new Error("Bestand kon niet gelezen worden."));
+      else resolve(b64);
+    };
+    reader.onerror = () => reject(new Error("Bestand kon niet gelezen worden."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function getMime(f: File) {
+  if (ACCEPTED_MIMES.has(f.type)) return f.type;
+  const ext = f.name.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  return f.type || "application/octet-stream";
+}
+
+function isAccepted(f: File) {
+  const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
+  return ACCEPTED_MIMES.has(f.type) || ACCEPTED_EXTS.has(ext);
+}
+
+type ExtractedRow = {
+  omschrijving: string;
+  hoeveelheid: number;
+  eenheid: string;
+  eenheidsprijs_excl_abex: number;
+};
+
+function BestekDropCard({
+  dossierId,
+  abexActueel,
+  abexBasis,
+  onLijnenExtracted,
+}: {
+  dossierId: string;
+  abexActueel: number;
+  abexBasis: number;
+  onLijnenExtracted: (rows: ExtractedRow[]) => void;
+}) {
+  const session = useSession();
+  const runExtract = useServerFn(extractBestekLijnen);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<{ count: number; samenvatting: string } | null>(null);
+
+  const { data: refprijzen = [] } = useQuery({
+    queryKey: ["referentieprijzen-extract"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("referentieprijzen")
+        .select("omschrijving,eenheid,basisprijs,maximale_basisprijs,abex_basisindex")
+        .limit(2000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const factor = abexBasis > 0 ? abexActueel / abexBasis : 1;
+
+  const extractMutation = useMutation({
+    mutationFn: async () => {
+      if (files.length === 0) throw new Error("Geen bestand gekozen.");
+      const payload = await Promise.all(
+        files.map(async (f) => ({
+          filename: f.name,
+          mimeType: getMime(f),
+          base64: await fileToBase64(f),
+        }))
+      );
+      const result = await runExtract({
+        data: {
+          files: payload,
+          abexActueel,
+          referentieprijzen: (refprijzen as Array<{ omschrijving: string; eenheid: string | null; basisprijs: number; maximale_basisprijs: number | null; abex_basisindex: number | null }>).map((r) => ({
+            omschrijving: r.omschrijving,
+            eenheid: r.eenheid,
+            basisprijs: Number(r.basisprijs),
+            maximale_basisprijs: r.maximale_basisprijs != null ? Number(r.maximale_basisprijs) : null,
+            abex_basisindex: r.abex_basisindex != null ? Number(r.abex_basisindex) : null,
+          })),
+        },
+      });
+      // Bestek-prijzen zijn meestal "actuele" prijzen → converteer naar excl. ABEX zodat huidige berekening klopt
+      const rows: ExtractedRow[] = result.lijnen.map((l) => ({
+        omschrijving: l.omschrijving,
+        hoeveelheid: l.hoeveelheid || 1,
+        eenheid: l.eenheid || "stuk",
+        eenheidsprijs_excl_abex: factor > 0 ? Number((l.eenheidsprijs_excl_abex / factor).toFixed(2)) : l.eenheidsprijs_excl_abex,
+      }));
+      await supabase.from("audit_log").insert({
+        dossier_id: dossierId,
+        actie: "bestek_lijnen_geextraheerd",
+        uitgevoerd_door: session?.userId ?? null,
+        detail_json: { bestanden: files.map((f) => f.name), aantal_lijnen: rows.length, samenvatting: result.samenvatting },
+      });
+      return { rows, samenvatting: result.samenvatting };
+    },
+    onSuccess: ({ rows, samenvatting }) => {
+      onLijnenExtracted(rows);
+      setLastResult({ count: rows.length, samenvatting });
+      setFiles([]);
+      setError(null);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    const arr = Array.from(list);
+    const valid: File[] = [];
+    for (const f of arr) {
+      if (!isAccepted(f)) {
+        setError(`Bestand ${f.name} is geen PDF, JPG of PNG.`);
+        return;
+      }
+      if (f.size > MAX_BESTEK_BYTES) {
+        setError(`Bestand ${f.name} is groter dan 10 MB.`);
+        return;
+      }
+      valid.push(f);
+    }
+    setError(null);
+    setFiles((fs) => [...fs, ...valid].slice(0, 5));
+  }
+
+  return (
+    <Card>
+      <SectionHeading>Of: bestek(ken) door AI laten extraheren</SectionHeading>
+      <p className="text-[12px] text-text-secondary mb-3">
+        Sleep één of meerdere bestekken (PDF, JPG of PNG, max 5) hierheen. De AI extraheert alle lijnen,
+        vergelijkt met de geïmporteerde referentieprijzen-catalogus, en voegt ze toe aan de schadelijnen hierboven.
+      </p>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/pdf,image/jpeg,image/png"
+        multiple
+        className="hidden"
+        onChange={(e) => addFiles(e.target.files)}
+      />
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => fileRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+        }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+        }}
+        onDrop={(e: DragEvent<HTMLDivElement>) => {
+          e.preventDefault();
+          setDragOver(false);
+          addFiles(e.dataTransfer.files);
+        }}
+        className={`w-full border-[0.5px] border-dashed rounded-md p-6 text-center text-[13px] cursor-pointer ${
+          dragOver ? "border-primary bg-primary-light text-primary" : "border-border text-text-muted hover:bg-muted/40"
+        }`}
+      >
+        {files.length === 0
+          ? "Sleep bestek(ken) hierheen of klik om te kiezen"
+          : `${files.length} bestand${files.length === 1 ? "" : "en"} klaar`}
+      </div>
+
+      {files.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1.5">
+          {files.map((f, i) => (
+            <li key={i} className="flex items-center justify-between text-[12px] border-[0.5px] border-border rounded-md px-2 py-1.5">
+              <span className="truncate">{f.name}</span>
+              <button
+                type="button"
+                onClick={() => setFiles((fs) => fs.filter((_, idx) => idx !== i))}
+                className="text-text-muted hover:text-status-red-fg"
+              >
+                <IconX size={14} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {refprijzen.length === 0 && (
+        <div className="mt-3 text-[12px] text-[#7A4D0D] bg-[#FDF1DA] border-[0.5px] border-[#BA7517] rounded-md p-2">
+          Geen referentieprijzen in de catalogus. De AI kan dan enkel lijnen extraheren zonder vergelijking. Importeer eerst een prijzen-Excel via Excel-import voor betere controle.
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-3 text-[12px] text-[#A32D2D] bg-[#FAE0E0] border-[0.5px] border-[#A32D2D] rounded-md p-2">
+          {error}
+        </div>
+      )}
+
+      {lastResult && (
+        <div className="mt-3 text-[12px] text-status-green-fg bg-status-green-bg border-[0.5px] border-status-green-fg rounded-md p-2">
+          {lastResult.count} lijn{lastResult.count === 1 ? "" : "en"} toegevoegd. {lastResult.samenvatting}
+        </div>
+      )}
+
+      <div className="mt-3">
+        <PrimaryButton
+          onClick={() => extractMutation.mutate()}
+          disabled={files.length === 0 || extractMutation.isPending}
+        >
+          <IconSparkles size={14} />
+          {extractMutation.isPending ? "AI extraheert…" : "Lijnen extraheren via AI"}
+        </PrimaryButton>
+      </div>
+    </Card>
+  );
+}
