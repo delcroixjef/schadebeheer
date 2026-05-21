@@ -9,10 +9,12 @@ import {
   IconUpload,
   IconChartBar,
   IconSettings,
+  IconHistory,
   
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import { useSession } from "@/lib/session";
+import { usePrecedentenAvailable } from "@/lib/precedenten";
 
 
 
@@ -51,7 +53,15 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const session = useSession();
   const roleLabel = session.role === "admin" ? "Administrator" : "Schadebeheerder";
+  const { available: precedentenAvailable } = usePrecedentenAvailable();
 
+  const dynamicSections: NavSection[] = precedentenAvailable
+    ? sections.map((s) =>
+        s.label === "Tools"
+          ? { ...s, items: [...s.items, { to: "/precedenten", label: "Precedenten", icon: IconHistory }] }
+          : s,
+      )
+    : sections;
 
   return (
     <aside className="w-[220px] flex-shrink-0 bg-card border-r-[0.5px] border-border flex flex-col">
@@ -61,7 +71,7 @@ export function AppSidebar() {
       </div>
 
       <div className="flex-1 overflow-auto pb-3">
-        {sections.map((section) => (
+        {dynamicSections.map((section) => (
           <div key={section.label}>
             <div className="px-2 pt-3 pb-1 mx-2 text-[10px] font-medium text-text-muted uppercase tracking-[0.8px]">
               {section.label}
