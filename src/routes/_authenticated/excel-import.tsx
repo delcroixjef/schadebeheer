@@ -457,11 +457,17 @@ function ExcelImportPage() {
         },
       });
 
-      toast.success(
-        `${inserts.length} referentieprijzen geïmporteerd ` +
-          `(rubriek: ${sheet.skipped.rubriek}, leeg: ${sheet.skipped.leeg}, formule: ${sheet.skipped.formule}).`,
+      const shortId = String(batchId).slice(0, 8);
+      setSuccessBanner(
+        `Import geslaagd — ${inserts.length} prijsregels opgeslagen voor ${VERZEKERAARS[verzekeraar].name} (batch ${shortId}).`,
       );
-      reset();
+      toast.success(`${inserts.length} prijsregels geïmporteerd.`);
+      setSheets([]);
+      setFilename(null);
+      setActiveSheet(null);
+      setAbexValue("");
+      setAbexAutoDetected(null);
+      setAbexManual(false);
       await qc.invalidateQueries({ queryKey: ["import-batches"] });
     } catch (e) {
       // 4. Mark batch as failed; previous active batch stays untouched if we never reached step 3.
