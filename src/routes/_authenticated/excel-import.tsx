@@ -430,7 +430,7 @@ function ExcelImportPage() {
       // 3. Deactivate previous active batch, then activate this one.
       await supabase
         .from("import_batches")
-        .update({ status: "failed" }) // temporary: must clear active before unique index
+        .update({ status: "superseded" })
         .eq("verzekeraar", verzekeraar)
         .eq("status", "active");
 
