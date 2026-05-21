@@ -84,7 +84,12 @@ function DossiersPage() {
               search={{ step: 2, id: d.id }}
               className="grid grid-cols-[1fr_1.2fr_0.8fr_0.8fr_0.8fr_60px] gap-2 px-3 py-2.5 rounded-md text-[13px] items-center border-b-[0.5px] border-border hover:bg-secondary transition-colors"
             >
-              <div className="font-medium">{d.dossiernummer}</div>
+              <div>
+                <div className="font-medium">{d.dossiernummer}</div>
+                {(d as any).maatschappij_dossiernr && (
+                  <div className="text-[11px] text-text-secondary">M: {(d as any).maatschappij_dossiernr}</div>
+                )}
+              </div>
               <div>
                 <div className="font-medium">{d.klant_naam}</div>
                 <div className="text-[11px] text-text-secondary">{schadeLabel(d.schade_type)}</div>

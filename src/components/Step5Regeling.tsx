@@ -126,12 +126,13 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
 
   function exportBrioCsv() {
     const headers = [
-      "dossiernummer", "polisnummer", "klant", "schadedatum", "schadesoort",
+      "welzeker_dossiernr", "maatschappij_dossiernr", "polisnummer", "klant", "schadedatum", "schadesoort",
       "verzekeraar", "vergoeding_bruto", "vrijstelling", "vergoeding_netto",
       "abex_index", "beheerder", "ai_score", "datum_regeling",
     ];
     const row = [
       dossier.dossiernummer,
+      (dossier as any).maatschappij_dossiernr ?? "",
       dossier.polis_nummer ?? "",
       dossier.klant_naam ?? "",
       dossier.schade_datum ?? "",
@@ -196,7 +197,8 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
         <Card>
           <SectionHeading>Dossiergegevens</SectionHeading>
           <div className="space-y-3">
-            <ReadonlyField label="Dossiernummer" value={dossier.dossiernummer} />
+            <ReadonlyField label="WelZeker dossiernr" value={dossier.dossiernummer} />
+            <ReadonlyField label="Maatschappij dossiernr" value={(dossier as any).maatschappij_dossiernr ?? "—"} />
             <ReadonlyField label="Polisnummer" value={dossier.polis_nummer ?? "—"} />
             <ReadonlyField label="Schadedatum" value={dossier.schade_datum ? formatDate(dossier.schade_datum) : "—"} />
             <ReadonlyField label="Verzekeraar" value={verzekeraarMeta?.name ?? "—"} />
@@ -302,7 +304,10 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
               </div>
             </div>
             <div style={{ fontSize: 10, color: "#6b7280", textAlign: "right" }}>
-              <div>Dossier {dossier.dossiernummer}</div>
+              <div>WelZeker {dossier.dossiernummer}</div>
+              {(dossier as any).maatschappij_dossiernr && (
+                <div>Mij. {(dossier as any).maatschappij_dossiernr}</div>
+              )}
               <div>{formatDate(new Date())}</div>
             </div>
           </div>

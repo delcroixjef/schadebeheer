@@ -133,8 +133,10 @@ function RegelingDetail({
         <Card>
           <SectionHeading>Dossiergegevens</SectionHeading>
           <dl className="grid grid-cols-2 gap-y-3 text-[13px]">
-            <dt className="text-text-secondary">Dossier</dt>
+            <dt className="text-text-secondary">WelZeker dossiernr</dt>
             <dd className="font-medium">{dossier.dossiernummer}</dd>
+            <dt className="text-text-secondary">Maatschappij dossiernr</dt>
+            <dd className="font-medium">{dossier.maatschappij_dossiernr ?? "—"}</dd>
             <dt className="text-text-secondary">Klant</dt>
             <dd className="font-medium">{dossier.klant_naam}</dd>
             <dt className="text-text-secondary">Polisnummer</dt>

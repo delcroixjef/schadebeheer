@@ -86,6 +86,7 @@ function Step1({ dossierId }: { dossierId?: string }) {
     klant_adres: "",
     klant_rijksregister: "",
     polis_nummer: "",
+    maatschappij_dossiernr: "",
     verzekeraar: "" as VerzekeraarKey | "",
     schade_type: "" as SchadeType | "",
     schade_datum: new Date().toISOString().slice(0, 10),
@@ -99,6 +100,7 @@ function Step1({ dossierId }: { dossierId?: string }) {
         klant_adres: existing.data.klant_adres ?? "",
         klant_rijksregister: existing.data.klant_rijksregister ?? "",
         polis_nummer: existing.data.polis_nummer ?? "",
+        maatschappij_dossiernr: (existing.data as any).maatschappij_dossiernr ?? "",
         verzekeraar: (existing.data.verzekeraar as VerzekeraarKey) ?? "",
         schade_type: (existing.data.schade_type as SchadeType) ?? "",
         schade_datum: existing.data.schade_datum ?? new Date().toISOString().slice(0, 10),
@@ -121,6 +123,7 @@ function Step1({ dossierId }: { dossierId?: string }) {
         klant_adres: form.klant_adres || null,
         klant_rijksregister: form.klant_rijksregister || null,
         polis_nummer: form.polis_nummer || null,
+        maatschappij_dossiernr: form.maatschappij_dossiernr || null,
         verzekeraar: form.verzekeraar || null,
         schade_type: form.schade_type || null,
         schade_datum: form.schade_datum,
@@ -177,6 +180,22 @@ function Step1({ dossierId }: { dossierId?: string }) {
         </Field>
         <Field label="Polisnummer">
           <input className={inputCls} value={form.polis_nummer} onChange={(e) => setForm({ ...form, polis_nummer: e.target.value })} />
+        </Field>
+        <Field label="WelZeker dossiernr">
+          <input
+            className={inputCls}
+            value={existing.data?.dossiernummer ?? "— wordt automatisch toegekend bij opslaan —"}
+            readOnly
+            disabled
+          />
+        </Field>
+        <Field label="Maatschappij dossiernr">
+          <input
+            className={inputCls}
+            value={form.maatschappij_dossiernr}
+            placeholder="bv. SIN-2026-0001"
+            onChange={(e) => setForm({ ...form, maatschappij_dossiernr: e.target.value })}
+          />
         </Field>
         <Field label="Verzekeraar" required>
           <select className={inputCls} value={form.verzekeraar} required onChange={(e) => setForm({ ...form, verzekeraar: e.target.value as VerzekeraarKey })}>

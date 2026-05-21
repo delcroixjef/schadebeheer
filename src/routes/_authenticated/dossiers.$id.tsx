@@ -46,7 +46,8 @@ function DossierDetail() {
         <Card>
           <SectionHeading>Schadegegevens</SectionHeading>
           <dl className="grid grid-cols-2 gap-y-3 text-[13px]">
-            <dt className="text-text-secondary">Dossier</dt><dd className="font-medium">{d.dossiernummer}</dd>
+            <dt className="text-text-secondary">WelZeker dossiernr</dt><dd className="font-medium">{d.dossiernummer}</dd>
+            <dt className="text-text-secondary">Maatschappij dossiernr</dt><dd className="font-medium">{(d as any).maatschappij_dossiernr ?? "—"}</dd>
             <dt className="text-text-secondary">Klant</dt><dd className="font-medium">{d.klant_naam}</dd>
             <dt className="text-text-secondary">Type schade</dt><dd>{schadeLabel(d.schade_type)}</dd>
             <dt className="text-text-secondary">Schadedatum</dt><dd>{d.schade_datum ? formatDate(d.schade_datum) : "—"}</dd>
