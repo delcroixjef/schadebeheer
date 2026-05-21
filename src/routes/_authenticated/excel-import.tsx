@@ -771,11 +771,13 @@ function StatusPill({ status }: { status: string }) {
     active: "bg-status-green-bg text-status-green-fg",
     pending: "bg-primary-light text-primary-dark",
     failed: "bg-status-red-bg text-status-red-fg",
+    superseded: "bg-secondary text-text-muted",
   };
   const label: Record<string, string> = {
     active: "Actief",
     pending: "Bezig",
     failed: "Mislukt",
+    superseded: "Vervangen",
   };
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium ${map[status] ?? "bg-secondary text-text-muted"}`}>
