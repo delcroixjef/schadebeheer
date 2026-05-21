@@ -21,6 +21,7 @@ import { Route as AuthenticatedDossiersRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBestekanalyseRouteImport } from './routes/_authenticated/bestekanalyse'
 import { Route as AuthenticatedAuditrapportRouteImport } from './routes/_authenticated/auditrapport'
 import { Route as AuthenticatedDossiersIdRouteImport } from './routes/_authenticated/dossiers.$id'
+import { Route as ApiPublicCronAbexFetchRouteImport } from './routes/api/public/cron/abex-fetch'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -88,6 +89,11 @@ const AuthenticatedDossiersIdRoute = AuthenticatedDossiersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedDossiersRoute,
 } as any)
+const ApiPublicCronAbexFetchRoute = ApiPublicCronAbexFetchRouteImport.update({
+  id: '/api/public/cron/abex-fetch',
+  path: '/api/public/cron/abex-fetch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
   '/klant/$token': typeof KlantTokenRoute
   '/dossiers/$id': typeof AuthenticatedDossiersIdRoute
+  '/api/public/cron/abex-fetch': typeof ApiPublicCronAbexFetchRoute
 }
 export interface FileRoutesByTo {
   '/auditrapport': typeof AuthenticatedAuditrapportRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/klant/$token': typeof KlantTokenRoute
   '/': typeof AuthenticatedIndexRoute
   '/dossiers/$id': typeof AuthenticatedDossiersIdRoute
+  '/api/public/cron/abex-fetch': typeof ApiPublicCronAbexFetchRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/klant/$token': typeof KlantTokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/dossiers/$id': typeof AuthenticatedDossiersIdRoute
+  '/api/public/cron/abex-fetch': typeof ApiPublicCronAbexFetchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/schadeberekening'
     | '/klant/$token'
     | '/dossiers/$id'
+    | '/api/public/cron/abex-fetch'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auditrapport'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/klant/$token'
     | '/'
     | '/dossiers/$id'
+    | '/api/public/cron/abex-fetch'
   id:
     | '__root__'
     | '/_authenticated'
@@ -171,11 +182,13 @@ export interface FileRouteTypes {
     | '/klant/$token'
     | '/_authenticated/'
     | '/_authenticated/dossiers/$id'
+    | '/api/public/cron/abex-fetch'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   KlantTokenRoute: typeof KlantTokenRoute
+  ApiPublicCronAbexFetchRoute: typeof ApiPublicCronAbexFetchRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -264,6 +277,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDossiersIdRouteImport
       parentRoute: typeof AuthenticatedDossiersRoute
     }
+    '/api/public/cron/abex-fetch': {
+      id: '/api/public/cron/abex-fetch'
+      path: '/api/public/cron/abex-fetch'
+      fullPath: '/api/public/cron/abex-fetch'
+      preLoaderRoute: typeof ApiPublicCronAbexFetchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -311,7 +331,18 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   KlantTokenRoute: KlantTokenRoute,
+  ApiPublicCronAbexFetchRoute: ApiPublicCronAbexFetchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
