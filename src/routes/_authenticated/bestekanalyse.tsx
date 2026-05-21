@@ -24,6 +24,15 @@ function isAcceptedBestekFile(file: File) {
   return ACCEPTED_FILE_TYPES.has(file.type) || ACCEPTED_FILE_EXTENSIONS.has(ext);
 }
 
+function getBestekMimeType(file: File) {
+  if (ACCEPTED_FILE_TYPES.has(file.type)) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  return file.type || "application/octet-stream";
+}
+
 function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -98,14 +107,15 @@ function BestekanalysePage() {
       if (!isAcceptedBestekFile(f)) throw new Error("Upload enkel PDF, JPG of PNG.");
       if (f.size > MAX_BYTES) throw new Error("Bestand is groter dan 10 MB");
       const ext = f.name.split(".").pop() ?? "bin";
+      const mimeType = getBestekMimeType(f);
       const path = `${dossierId}/${Date.now()}-${f.name}`;
       const { error: upErr } = await supabase.storage.from("bestekken").upload(path, f, {
         upsert: true,
-        contentType: f.type,
+        contentType: mimeType,
       });
       if (upErr) throw upErr;
       let pages: number | null = null;
-      if (f.type === "application/pdf") {
+      if (mimeType === "application/pdf") {
         const buf = await f.arrayBuffer();
         const txt = new TextDecoder("latin1").decode(buf);
         pages = (txt.match(/\/Type\s*\/Page[^s]/g) ?? []).length || null;
@@ -139,7 +149,7 @@ function BestekanalysePage() {
         data: {
           dossierId,
           fileBase64: b64,
-          mimeType: file.type,
+          mimeType: getBestekMimeType(file),
           abexActueel: abex,
           schadeLijnen: schadeLijnen.map((l) => ({
             omschrijving: l.omschrijving,
