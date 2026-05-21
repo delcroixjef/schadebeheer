@@ -126,12 +126,13 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
 
   function exportBrioCsv() {
     const headers = [
-      "dossiernummer", "polisnummer", "klant", "schadedatum", "schadesoort",
+      "welzeker_dossiernr", "maatschappij_dossiernr", "polisnummer", "klant", "schadedatum", "schadesoort",
       "verzekeraar", "vergoeding_bruto", "vrijstelling", "vergoeding_netto",
       "abex_index", "beheerder", "ai_score", "datum_regeling",
     ];
     const row = [
       dossier.dossiernummer,
+      (dossier as any).maatschappij_dossiernr ?? "",
       dossier.polis_nummer ?? "",
       dossier.klant_naam ?? "",
       dossier.schade_datum ?? "",
