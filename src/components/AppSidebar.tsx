@@ -90,9 +90,10 @@ export function AppSidebar() {
 
       <div className="px-4 py-3 border-t-[0.5px] border-border flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[12px] font-medium text-foreground truncate">{displayName}</div>
-          <div className="text-[11px] text-text-muted">Schadebeheerder</div>
+          <div className="text-[12px] font-medium text-foreground truncate">{session.displayName}</div>
+          <div className="text-[11px] text-text-muted truncate">{roleLabel}</div>
         </div>
+
       </div>
     </aside>
   );
