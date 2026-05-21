@@ -7,6 +7,8 @@ import { Topbar, PrimaryButton, Card } from "@/components/Topbar";
 import { InsurerBadge, StatusBadge } from "@/components/InsurerBadge";
 import { formatDate } from "@/lib/format";
 import { VERZEKERAARS, STATUS_LABELS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
+import { useSession } from "@/lib/session";
+
 
 export const Route = createFileRoute("/_authenticated/dossiers")({
   component: DossiersPage,
