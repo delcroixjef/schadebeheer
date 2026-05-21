@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import { IconUpload, IconAlertTriangle, IconCheck, IconX } from "@tabler/icons-react";
+import { IconUpload, IconAlertTriangle, IconCheck, IconX, IconLoader2 } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
 import { VERZEKERAARS, VERZEKERAAR_KEYS, type VerzekeraarKey } from "@/lib/insurers";
@@ -315,6 +315,7 @@ function ExcelImportPage() {
   const [geldigVan, setGeldigVan] = useState(new Date().toISOString().slice(0, 10));
   const [importing, setImporting] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const history = useQuery({
@@ -338,6 +339,7 @@ function ExcelImportPage() {
     setAbexAutoDetected(null);
     setAbexManual(false);
     setErrorBanner(null);
+    setSuccessBanner(null);
   };
 
   const handleFile = useCallback(async (file: File) => {
@@ -455,11 +457,17 @@ function ExcelImportPage() {
         },
       });
 
-      toast.success(
-        `${inserts.length} referentieprijzen geïmporteerd ` +
-          `(rubriek: ${sheet.skipped.rubriek}, leeg: ${sheet.skipped.leeg}, formule: ${sheet.skipped.formule}).`,
+      const shortId = String(batchId).slice(0, 8);
+      setSuccessBanner(
+        `Import geslaagd — ${inserts.length} prijsregels opgeslagen voor ${VERZEKERAARS[verzekeraar].name} (batch ${shortId}).`,
       );
-      reset();
+      toast.success(`${inserts.length} prijsregels geïmporteerd.`);
+      setSheets([]);
+      setFilename(null);
+      setActiveSheet(null);
+      setAbexValue("");
+      setAbexAutoDetected(null);
+      setAbexManual(false);
       await qc.invalidateQueries({ queryKey: ["import-batches"] });
     } catch (e) {
       // 4. Mark batch as failed; previous active batch stays untouched if we never reached step 3.
@@ -478,6 +486,13 @@ function ExcelImportPage() {
   return (
     <>
       <Topbar title="Excel import" subtitle="Importeer referentieprijzen vanuit Baloise-prijsbestand" />
+
+      {successBanner && (
+        <div className="mb-4 rounded-md border-[0.5px] border-status-green-fg/40 bg-status-green-bg text-status-green-fg px-3 py-2 text-[12px] flex items-center gap-2">
+          <IconCheck size={14} />
+          <span>{successBanner}</span>
+        </div>
+      )}
 
       {sheets.length === 0 && (
         <Card>
@@ -522,8 +537,44 @@ function ExcelImportPage() {
           )}
 
           <Card className="mb-4">
-            <SectionHeading>Tabbladen — {filename}</SectionHeading>
-            <div className="flex gap-1.5 mb-4 flex-wrap">
+            <SectionHeading>Importanalyse — {filename}</SectionHeading>
+            <div className="flex flex-col gap-1.5">
+              {sheets.map((s) => {
+                const chipCls =
+                  s.kind === "prijs_catalogus"
+                    ? "bg-status-green-bg text-status-green-fg border-status-green-fg/30"
+                    : s.kind === "glas_calculator"
+                      ? "bg-primary-light text-primary-dark border-primary/30"
+                      : "bg-secondary text-text-muted border-border";
+                const chipLabel =
+                  s.kind === "prijs_catalogus"
+                    ? "Prijscatalogus — importeerbaar"
+                    : s.kind === "glas_calculator"
+                      ? "Glasberekening — later beschikbaar"
+                      : s.kind === "genegeerd"
+                        ? "Genegeerd"
+                        : "Niet importeerbaar";
+                return (
+                  <div
+                    key={s.sheetName}
+                    className="flex items-center justify-between gap-3 py-1.5 border-b-[0.5px] border-border last:border-0"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[13px] font-medium truncate">{s.sheetName}</span>
+                      <span className="text-[11px] text-text-muted truncate">{s.reason}</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium border-[0.5px] whitespace-nowrap ${chipCls}`}>
+                      {chipLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="mb-4">
+            <SectionHeading>Tabbladen</SectionHeading>
+            <div className="flex gap-1.5 flex-wrap">
               {sheets.map((s) => {
                 const badge = KIND_BADGES[s.kind];
                 const isActive = s.sheetName === activeSheet;
@@ -542,15 +593,8 @@ function ExcelImportPage() {
                 );
               })}
             </div>
-            {sheet && (
-              <div className="text-[12px] text-text-secondary">
-                {sheet.reason}
-                {sheet.headerRow !== null && (
-                  <> · koprij regel {sheet.headerRow + 1}</>
-                )}
-              </div>
-            )}
           </Card>
+
 
           {sheet && sheet.kind === "prijs_catalogus" && sheet.mapping && (
             <>
@@ -629,50 +673,116 @@ function ExcelImportPage() {
               </Card>
 
               <Card className="mb-4">
-                <SectionHeading>Voorbeeld — eerste 5 geldige rijen</SectionHeading>
-                <div className="overflow-x-auto">
+                <SectionHeading>
+                  Importpreview — {sheet.rows.length} prijsregels (eerste 30 getoond)
+                </SectionHeading>
+                <div className="overflow-x-auto max-h-[420px] overflow-y-auto border-[0.5px] border-border rounded-md">
                   <table className="w-full text-[12px]">
-                    <thead>
+                    <thead className="sticky top-0 bg-secondary">
                       <tr className="text-left text-text-secondary uppercase tracking-[0.5px] text-[11px] border-b-[0.5px] border-border">
-                        <th className="py-2 pr-3 font-medium">Code</th>
-                        <th className="py-2 pr-3 font-medium">Omschrijving</th>
-                        <th className="py-2 pr-3 font-medium">Opmerking</th>
-                        <th className="py-2 pr-3 font-medium">Eenheid</th>
-                        <th className="py-2 pr-3 font-medium text-right">Basisprijs</th>
+                        <th className="py-2 px-3 font-medium">Code</th>
+                        <th className="py-2 px-3 font-medium">Omschrijving</th>
+                        <th className="py-2 px-3 font-medium">Opmerking</th>
+                        <th className="py-2 px-3 font-medium">Eenheid</th>
+                        <th className="py-2 px-3 font-medium text-right">Basisprijs</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sheet.preview.map((row, i) => (
-                        <tr key={i} className="border-b-[0.5px] border-border">
-                          {row.map((c, j) => (
-                            <td
-                              key={j}
-                              className={`py-1.5 pr-3 ${j === 4 ? "text-right tabular-nums" : "text-text-secondary"}`}
-                            >
-                              {c}
-                            </td>
-                          ))}
+                      {sheet.rows.slice(0, 30).map((r, i) => (
+                        <tr key={i} className="border-b-[0.5px] border-border last:border-0">
+                          <td className="py-1.5 px-3 text-text-secondary">{r.code}</td>
+                          <td className="py-1.5 px-3">{r.omschrijving}</td>
+                          <td className="py-1.5 px-3 text-text-muted">{r.opmerking ?? ""}</td>
+                          <td className="py-1.5 px-3 text-text-secondary">{r.eenheid}</td>
+                          <td className="py-1.5 px-3 text-right tabular-nums">
+                            {r.basisprijs.toFixed(2)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <div className="text-[11px] text-text-muted mt-2 flex flex-wrap gap-3">
-                  <span>{sheet.rows.length} geldige rijen</span>
-                  <span>· rubriek-rijen overgeslagen: {sheet.skipped.rubriek}</span>
-                  <span>· lege rijen overgeslagen: {sheet.skipped.leeg}</span>
-                  <span>· formule-rijen overgeslagen: {sheet.skipped.formule}</span>
-                </div>
+              </Card>
+
+              <Card className="mb-4">
+                <SectionHeading>Samenvatting</SectionHeading>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[13px]">
+                  <SummaryRow
+                    label="Gelezen rijen"
+                    value={String(
+                      sheet.rows.length +
+                        sheet.skipped.rubriek +
+                        sheet.skipped.leeg +
+                        sheet.skipped.formule,
+                    )}
+                  />
+                  <SummaryRow
+                    label="Importeerbare prijsregels"
+                    value={String(sheet.rows.length)}
+                    strong
+                  />
+                  <SummaryRow
+                    label="Overgeslagen rubrieken"
+                    value={String(sheet.skipped.rubriek)}
+                  />
+                  <SummaryRow
+                    label="Overgeslagen lege regels"
+                    value={String(sheet.skipped.leeg)}
+                  />
+                  <SummaryRow
+                    label="Overgeslagen formule-rijen"
+                    value={String(sheet.skipped.formule)}
+                  />
+                  <SummaryRow
+                    label="ABEX basisindex"
+                    value={
+                      abexValue === ""
+                        ? "—"
+                        : abexAutoDetected !== null && !abexManual
+                          ? `${abexValue} (automatisch gedetecteerd)`
+                          : `${abexValue} (handmatig)`
+                    }
+                  />
+                  <SummaryRow
+                    label="Genegeerde FR-kolommen"
+                    value="Description, Remarque"
+                  />
+                  <SummaryRow
+                    label="Genegeerde tabbladen"
+                    value={
+                      sheets
+                        .filter((s) => s.kind === "glas_calculator" || s.kind === "genegeerd")
+                        .map((s) =>
+                          s.kind === "glas_calculator"
+                            ? `${s.sheetName} (glasberekening)`
+                            : s.sheetName,
+                        )
+                        .join(", ") || "—"
+                    }
+                  />
+                </dl>
               </Card>
 
               <div className="flex items-center gap-3 mb-6">
                 <PrimaryButton onClick={doImport} disabled={!canImport}>
-                  {importing ? "Importeren…" : `Importeer ${sheet.rows.length} rijen`}
+                  {importing ? (
+                    <span className="inline-flex items-center gap-2">
+                      <IconLoader2 size={14} className="animate-spin" />
+                      Importeren…
+                    </span>
+                  ) : (
+                    `Importeer ${sheet.rows.length} prijsregels`
+                  )}
                 </PrimaryButton>
-                <button onClick={reset} className="text-[13px] text-text-secondary hover:text-foreground">
+                <button
+                  onClick={reset}
+                  disabled={importing}
+                  className="text-[13px] text-text-secondary hover:text-foreground disabled:opacity-50"
+                >
                   Annuleren
                 </button>
               </div>
+
             </>
           )}
 
@@ -702,29 +812,32 @@ function ExcelImportPage() {
         <SectionHeading>Recente imports</SectionHeading>
         {history.data && history.data.length > 0 ? (
           <div>
-            <div className="grid grid-cols-[2fr_1fr_1fr_0.7fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
+            <div className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
               <span>Bestand</span>
               <span>Verzekeraar</span>
-              <span>Geldig van</span>
-              <span>ABEX</span>
+              <span className="text-right">Prijsregels</span>
               <span>Status</span>
+              <span>Door</span>
               <span>Datum</span>
             </div>
             {history.data.map((b) => (
               <div
                 key={b.id}
-                className="grid grid-cols-[2fr_1fr_1fr_0.7fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
+                className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
               >
                 <span className="truncate" title={b.bron_bestand ?? ""}>{b.bron_bestand ?? "—"}</span>
                 <span className="text-text-secondary">
                   {VERZEKERAARS[(b.verzekeraar as VerzekeraarKey) ?? "baloise"]?.name ?? String(b.verzekeraar ?? "—")}
                 </span>
-                <span className="text-text-secondary">{b.geldig_van ? formatDate(String(b.geldig_van)) : "—"}</span>
-                <span className="tabular-nums">{b.abex_basisindex ?? "—"}</span>
+                <BatchRowCount batchId={b.id as string} />
                 <StatusPill status={b.status as string} />
+                <span className="text-text-secondary truncate" title={(b.aangemaakt_door_naam as string) ?? ""}>
+                  {(b.aangemaakt_door_naam as string) ?? "—"}
+                </span>
                 <span className="text-text-muted text-[12px]">{formatDate(b.aangemaakt_op as string)}</span>
               </div>
             ))}
+
           </div>
         ) : (
           <p className="text-[13px] text-text-muted">Nog geen imports.</p>
@@ -792,5 +905,35 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-[11px] text-text-secondary uppercase tracking-[0.5px]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b-[0.5px] border-border py-1.5 last:border-0">
+      <dt className="text-text-secondary text-[12px]">{label}</dt>
+      <dd className={`tabular-nums text-right ${strong ? "font-semibold text-foreground" : "text-foreground"}`}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function BatchRowCount({ batchId }: { batchId: string }) {
+  const { data } = useQuery({
+    queryKey: ["batch-count", batchId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("referentieprijzen")
+        .select("*", { count: "exact", head: true })
+        .eq("batch_id", batchId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  return (
+    <span className="text-right tabular-nums text-text-secondary">
+      {data === undefined ? "…" : `${data} regels`}
+    </span>
   );
 }
