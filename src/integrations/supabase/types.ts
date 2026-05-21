@@ -16,56 +16,158 @@ export type Database = {
     Tables: {
       abex_index: {
         Row: {
+          bron: string | null
+          created_at: string
           id: string
-          is_active: boolean
-          period_label: string
-          updated_at: string
-          value: number
+          indexwaarde: number
+          ingangsdatum: string
+          manueel_ingevoerd: boolean
+          periode: string
         }
         Insert: {
+          bron?: string | null
+          created_at?: string
           id?: string
-          is_active?: boolean
-          period_label: string
-          updated_at?: string
-          value: number
+          indexwaarde: number
+          ingangsdatum: string
+          manueel_ingevoerd?: boolean
+          periode: string
         }
         Update: {
+          bron?: string | null
+          created_at?: string
           id?: string
-          is_active?: boolean
-          period_label?: string
-          updated_at?: string
-          value?: number
+          indexwaarde?: number
+          ingangsdatum?: string
+          manueel_ingevoerd?: boolean
+          periode?: string
         }
         Relationships: []
       }
       audit_log: {
         Row: {
-          action: string
-          actor_id: string | null
-          created_at: string
+          actie: string
+          detail_json: Json | null
           dossier_id: string | null
           id: string
-          payload: Json | null
+          timestamp: string
+          uitgevoerd_door: string | null
         }
         Insert: {
-          action: string
-          actor_id?: string | null
-          created_at?: string
+          actie: string
+          detail_json?: Json | null
           dossier_id?: string | null
           id?: string
-          payload?: Json | null
+          timestamp?: string
+          uitgevoerd_door?: string | null
         }
         Update: {
-          action?: string
-          actor_id?: string | null
-          created_at?: string
+          actie?: string
+          detail_json?: Json | null
           dossier_id?: string | null
           id?: string
-          payload?: Json | null
+          timestamp?: string
+          uitgevoerd_door?: string | null
+        }
+        Relationships: []
+      }
+      dossiers: {
+        Row: {
+          abex_index_gebruikt: number | null
+          abex_periode: string | null
+          beheerder_id: string | null
+          created_at: string
+          dossiernummer: string
+          heeft_indirecte_verliezen: boolean
+          heeft_vrijstelling: boolean
+          id: string
+          klant_adres: string | null
+          klant_naam: string
+          klant_rijksregister: string | null
+          polis_nummer: string | null
+          schade_datum: string | null
+          schade_omschrijving: string | null
+          schade_type: Database["public"]["Enums"]["schade_type"] | null
+          status: Database["public"]["Enums"]["dossier_status"]
+          updated_at: string
+          verzekeraar: Database["public"]["Enums"]["verzekeraar"] | null
+          vrijstelling_bedrag: number
+        }
+        Insert: {
+          abex_index_gebruikt?: number | null
+          abex_periode?: string | null
+          beheerder_id?: string | null
+          created_at?: string
+          dossiernummer?: string
+          heeft_indirecte_verliezen?: boolean
+          heeft_vrijstelling?: boolean
+          id?: string
+          klant_adres?: string | null
+          klant_naam: string
+          klant_rijksregister?: string | null
+          polis_nummer?: string | null
+          schade_datum?: string | null
+          schade_omschrijving?: string | null
+          schade_type?: Database["public"]["Enums"]["schade_type"] | null
+          status?: Database["public"]["Enums"]["dossier_status"]
+          updated_at?: string
+          verzekeraar?: Database["public"]["Enums"]["verzekeraar"] | null
+          vrijstelling_bedrag?: number
+        }
+        Update: {
+          abex_index_gebruikt?: number | null
+          abex_periode?: string | null
+          beheerder_id?: string | null
+          created_at?: string
+          dossiernummer?: string
+          heeft_indirecte_verliezen?: boolean
+          heeft_vrijstelling?: boolean
+          id?: string
+          klant_adres?: string | null
+          klant_naam?: string
+          klant_rijksregister?: string | null
+          polis_nummer?: string | null
+          schade_datum?: string | null
+          schade_omschrijving?: string | null
+          schade_type?: Database["public"]["Enums"]["schade_type"] | null
+          status?: Database["public"]["Enums"]["dossier_status"]
+          updated_at?: string
+          verzekeraar?: Database["public"]["Enums"]["verzekeraar"] | null
+          vrijstelling_bedrag?: number
+        }
+        Relationships: []
+      }
+      klant_tokens: {
+        Row: {
+          created_at: string
+          dossier_id: string
+          expires_at: string
+          gebruikt: boolean
+          id: string
+          ondertekend_op: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          dossier_id: string
+          expires_at: string
+          gebruikt?: boolean
+          id?: string
+          ondertekend_op?: string | null
+          token: string
+        }
+        Update: {
+          created_at?: string
+          dossier_id?: string
+          expires_at?: string
+          gebruikt?: boolean
+          id?: string
+          ondertekend_op?: string | null
+          token?: string
         }
         Relationships: [
           {
-            foreignKeyName: "audit_log_dossier_id_fkey"
+            foreignKeyName: "klant_tokens_dossier_id_fkey"
             columns: ["dossier_id"]
             isOneToOne: false
             referencedRelation: "dossiers"
@@ -73,113 +175,126 @@ export type Database = {
           },
         ]
       }
-      dossiers: {
+      referentieprijzen: {
         Row: {
-          amount: number
-          assigned_to: string | null
+          abex_basisindex: number | null
+          basisprijs: number
+          bron_bestand: string | null
+          categorie: string | null
           created_at: string
-          customer_name: string
-          customer_type: string | null
-          damage_date: string
-          damage_type: string
+          eenheid: string | null
+          geldig_van: string | null
           id: string
-          insurer_id: string | null
-          notes: string | null
-          status: string
-          status_label: string | null
-          updated_at: string
+          omschrijving: string
+          verzekeraar: string
         }
         Insert: {
-          amount?: number
-          assigned_to?: string | null
+          abex_basisindex?: number | null
+          basisprijs?: number
+          bron_bestand?: string | null
+          categorie?: string | null
           created_at?: string
-          customer_name: string
-          customer_type?: string | null
-          damage_date: string
-          damage_type: string
+          eenheid?: string | null
+          geldig_van?: string | null
           id?: string
-          insurer_id?: string | null
-          notes?: string | null
-          status?: string
-          status_label?: string | null
-          updated_at?: string
+          omschrijving: string
+          verzekeraar?: string
         }
         Update: {
-          amount?: number
-          assigned_to?: string | null
+          abex_basisindex?: number | null
+          basisprijs?: number
+          bron_bestand?: string | null
+          categorie?: string | null
           created_at?: string
-          customer_name?: string
-          customer_type?: string | null
-          damage_date?: string
-          damage_type?: string
+          eenheid?: string | null
+          geldig_van?: string | null
           id?: string
-          insurer_id?: string | null
-          notes?: string | null
-          status?: string
-          status_label?: string | null
-          updated_at?: string
+          omschrijving?: string
+          verzekeraar?: string
+        }
+        Relationships: []
+      }
+      schade_lijnen: {
+        Row: {
+          afwijking_percentage: number | null
+          ai_oordeel: Database["public"]["Enums"]["ai_oordeel"]
+          created_at: string
+          dossier_id: string
+          eenheid: string | null
+          eenheidsprijs_excl_abex: number
+          eenheidsprijs_incl_abex: number
+          hoeveelheid: number
+          id: string
+          omschrijving: string
+          referentieprijs_baloise: number | null
+          subtotaal: number
+        }
+        Insert: {
+          afwijking_percentage?: number | null
+          ai_oordeel?: Database["public"]["Enums"]["ai_oordeel"]
+          created_at?: string
+          dossier_id: string
+          eenheid?: string | null
+          eenheidsprijs_excl_abex?: number
+          eenheidsprijs_incl_abex?: number
+          hoeveelheid?: number
+          id?: string
+          omschrijving: string
+          referentieprijs_baloise?: number | null
+          subtotaal?: number
+        }
+        Update: {
+          afwijking_percentage?: number | null
+          ai_oordeel?: Database["public"]["Enums"]["ai_oordeel"]
+          created_at?: string
+          dossier_id?: string
+          eenheid?: string | null
+          eenheidsprijs_excl_abex?: number
+          eenheidsprijs_incl_abex?: number
+          hoeveelheid?: number
+          id?: string
+          omschrijving?: string
+          referentieprijs_baloise?: number | null
+          subtotaal?: number
         }
         Relationships: [
           {
-            foreignKeyName: "dossiers_insurer_id_fkey"
-            columns: ["insurer_id"]
+            foreignKeyName: "schade_lijnen_dossier_id_fkey"
+            columns: ["dossier_id"]
             isOneToOne: false
-            referencedRelation: "insurers"
+            referencedRelation: "dossiers"
             referencedColumns: ["id"]
           },
         ]
-      }
-      insurers: {
-        Row: {
-          color_token: string
-          created_at: string
-          id: string
-          max_authority_amount: number
-          name: string
-        }
-        Insert: {
-          color_token?: string
-          created_at?: string
-          id?: string
-          max_authority_amount?: number
-          name: string
-        }
-        Update: {
-          color_token?: string
-          created_at?: string
-          id?: string
-          max_authority_amount?: number
-          name?: string
-        }
-        Relationships: []
-      }
-      settings: {
-        Row: {
-          key: string
-          updated_at: string
-          value: Json
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          value: Json
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          value?: Json
-        }
-        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_dossiernummer: { Args: never; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      ai_oordeel:
+        | "conform"
+        | "licht_verhoogd"
+        | "niet_conform"
+        | "niet_beoordeeld"
+      dossier_status:
+        | "concept"
+        | "berekening"
+        | "bestekanalyse"
+        | "akkoord"
+        | "afgerond"
+        | "doorgestuurd_verzekeraar"
+      schade_type:
+        | "waterschade"
+        | "brandschade"
+        | "glasbraak"
+        | "stormschade"
+        | "tuinafsluiting"
+        | "andere"
+      verzekeraar: "baloise" | "axa" | "vivium" | "ag_insurance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -306,6 +421,30 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ai_oordeel: [
+        "conform",
+        "licht_verhoogd",
+        "niet_conform",
+        "niet_beoordeeld",
+      ],
+      dossier_status: [
+        "concept",
+        "berekening",
+        "bestekanalyse",
+        "akkoord",
+        "afgerond",
+        "doorgestuurd_verzekeraar",
+      ],
+      schade_type: [
+        "waterschade",
+        "brandschade",
+        "glasbraak",
+        "stormschade",
+        "tuinafsluiting",
+        "andere",
+      ],
+      verzekeraar: ["baloise", "axa", "vivium", "ag_insurance"],
+    },
   },
 } as const

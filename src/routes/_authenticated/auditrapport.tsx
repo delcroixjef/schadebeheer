@@ -15,7 +15,7 @@ function AuditReport() {
       const { data, error } = await supabase
         .from("audit_log")
         .select("*")
-        .order("created_at", { ascending: false })
+        .order("timestamp", { ascending: false })
         .limit(100);
       if (error) throw error;
       return data;
@@ -33,8 +33,8 @@ function AuditReport() {
           <div className="space-y-2">
             {data?.map((row) => (
               <div key={row.id} className="flex justify-between text-[13px] border-b-[0.5px] border-border py-2">
-                <span>{row.action}</span>
-                <span className="text-text-muted text-[11px]">{formatDate(row.created_at)}</span>
+                <span>{row.actie}</span>
+                <span className="text-text-muted text-[11px]">{formatDate(row.timestamp)}</span>
               </div>
             ))}
           </div>
