@@ -19,6 +19,7 @@ const inputSchema = z.object({
       omschrijving: z.string(),
       eenheid: z.string().nullable().optional(),
       basisprijs: z.number(),
+      abex_basisindex: z.number().nullable().optional(),
     })
   ),
 });
@@ -26,9 +27,9 @@ const inputSchema = z.object({
 export type BestekLijn = {
   omschrijving: string;
   bestek_prijs: number;
-  referentie_prijs: number;
-  afwijking_pct: number;
-  oordeel: "conform" | "licht_verhoogd" | "niet_conform";
+  referentie_prijs: number | null;
+  afwijking_pct: number | null;
+  oordeel: "conform" | "licht_verhoogd" | "niet_conform" | "geen_referentie";
 };
 
 export type BestekAnalyseResult = {
