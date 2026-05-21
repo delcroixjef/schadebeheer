@@ -260,11 +260,13 @@ export type Database = {
           batch_id: string | null
           bron_bestand: string | null
           categorie: string | null
+          code: string | null
           created_at: string
           eenheid: string | null
           geldig_van: string | null
           id: string
           omschrijving: string
+          opmerking: string | null
           verzekeraar: string
         }
         Insert: {
@@ -273,11 +275,13 @@ export type Database = {
           batch_id?: string | null
           bron_bestand?: string | null
           categorie?: string | null
+          code?: string | null
           created_at?: string
           eenheid?: string | null
           geldig_van?: string | null
           id?: string
           omschrijving: string
+          opmerking?: string | null
           verzekeraar?: string
         }
         Update: {
@@ -286,11 +290,13 @@ export type Database = {
           batch_id?: string | null
           bron_bestand?: string | null
           categorie?: string | null
+          code?: string | null
           created_at?: string
           eenheid?: string | null
           geldig_van?: string | null
           id?: string
           omschrijving?: string
+          opmerking?: string | null
           verzekeraar?: string
         }
         Relationships: [
