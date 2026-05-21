@@ -579,10 +579,13 @@ function ExcelImportPage() {
       const inserts = sheet.rows.map((r) => ({
         verzekeraar,
         code: r.code,
+        categorie: r.categorie,
+        categorie_text: r.categorie,
         omschrijving: r.omschrijving,
         opmerking: r.opmerking,
         eenheid: r.eenheid,
         basisprijs: r.basisprijs,
+        maximale_basisprijs: r.maximale_basisprijs,
         abex_basisindex: Number(abexValue),
         geldig_van: geldigVan,
         bron_bestand: filename,
