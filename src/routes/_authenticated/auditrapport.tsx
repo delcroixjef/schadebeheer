@@ -65,7 +65,7 @@ function AuditReport() {
         .lte("updated_at", `${tot}T23:59:59`)
         .order("updated_at", { ascending: false });
       if (verzekeraar !== "alle") q = q.eq("verzekeraar", verzekeraar as VerzekeraarKey);
-      if (status !== "alle") q = q.eq("status", status);
+      if (status !== "alle") q = q.eq("status", status as Dossier["status"] as never);
       if (beheerder !== "alle") q = q.eq("beheerder_id", beheerder);
       const { data, error } = await q;
       if (error) throw error;
