@@ -580,7 +580,6 @@ function ExcelImportPage() {
         verzekeraar,
         code: r.code,
         categorie: r.categorie,
-        categorie_text: r.categorie,
         omschrijving: r.omschrijving,
         opmerking: r.opmerking,
         eenheid: r.eenheid,
