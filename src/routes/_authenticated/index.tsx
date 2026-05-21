@@ -132,6 +132,7 @@ function Dashboard() {
 
           {dossiers.data?.map((d) => {
             const ins = d.verzekeraar ? VERZEKERAARS[d.verzekeraar as VerzekeraarKey] : null;
+            const overLimit = ins ? d._totaal >= ins.maxAuthority : false;
             return (
               <Link
                 key={d.id}
@@ -146,7 +147,14 @@ function Dashboard() {
                   </div>
                 </div>
                 <div>{ins && <InsurerBadge name={ins.name} color={ins.color} />}</div>
-                <div className="font-medium">{formatEur(d._totaal)}</div>
+                <div className="font-medium flex items-center gap-1.5">
+                  {formatEur(d._totaal)}
+                  {overLimit && (
+                    <span className="px-1.5 py-px rounded-full text-[10px] bg-status-amber-bg text-status-amber-fg">
+                      ⚠ boven limiet
+                    </span>
+                  )}
+                </div>
                 <div>
                   <StatusBadge status={d.status} label={STATUS_LABELS[d.status]} />
                 </div>
