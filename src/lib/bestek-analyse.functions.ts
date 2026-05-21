@@ -40,12 +40,18 @@ export type BestekAnalyseResult = {
 
 const SYSTEM_PROMPT = (abex: number) =>
   `Je bent een schade-expert voor Belgische brandverzekeringen.
-Analyseer het aangeleverde bestek van de klant en vergelijk elke besteklijn met de referentieprijzen (gecorrigeerd voor ABEX-index ${abex}).
-Geef per lijn een oordeel: conform (afwijking <10%), licht_verhoogd (10-25%), niet_conform (>25%).
-Geef een totale conformiteitsscore van 0-100.
-Geef een Nederlandse aanbeveling van max 3 zinnen.
-Antwoord uitsluitend in JSON met dit formaat:
-{ "score": number, "lijnen": [{"omschrijving": string, "bestek_prijs": number, "referentie_prijs": number, "afwijking_pct": number, "oordeel": "conform"|"licht_verhoogd"|"niet_conform"}], "aanbeveling": string, "verdacht_label": string|null }`;
+
+STRIKTE REGELS — VERPLICHT:
+1. Extraheer ELKE individuele lijn (post) uit het bijgevoegde bestek van de klant met exacte omschrijving en eenheidsprijs.
+2. Voor de vergelijking gebruik je UITSLUITEND de meegegeven referentieprijzen-catalogus. Je MAG GEEN referentieprijzen verzinnen of inschatten op basis van eigen kennis.
+3. Voor elke besteklijn zoek je de best passende post in de catalogus (semantische match op omschrijving). De catalogus-basisprijs corrigeer je naar ABEX-index ${abex} via: referentie_prijs = basisprijs × (${abex} / abex_basisindex_catalogus). Als de catalogus geen abex_basisindex meegeeft, gebruik je basisprijs ongewijzigd.
+4. Indien GEEN redelijke match in de catalogus bestaat: referentie_prijs = null, afwijking_pct = null, oordeel = "geen_referentie". NIET verzinnen.
+5. Indien wel match: oordeel = conform (<10%), licht_verhoogd (10–25%), niet_conform (>25%).
+6. Score 0–100 = % conforme + match-dekkings-ratio. "geen_referentie" lijnen tellen NIET als niet-conform maar verlagen wel de dekking.
+7. Aanbeveling in NL, max 3 zinnen, feitelijk over prijsafwijkingen — GEEN algemene uitspraken over de aannemer als er geen prijsdata is.
+
+Antwoord uitsluitend in JSON:
+{ "score": number, "lijnen": [{"omschrijving": string, "bestek_prijs": number, "referentie_prijs": number|null, "afwijking_pct": number|null, "oordeel": "conform"|"licht_verhoogd"|"niet_conform"|"geen_referentie"}], "aanbeveling": string, "verdacht_label": string|null }`;
 
 export const analyseBestek = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => inputSchema.parse(input))
