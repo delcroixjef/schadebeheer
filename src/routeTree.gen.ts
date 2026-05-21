@@ -9,61 +9,309 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSchadeberekeningRouteImport } from './routes/_authenticated/schadeberekening'
+import { Route as AuthenticatedRegelingsdocumentenRouteImport } from './routes/_authenticated/regelingsdocumenten'
+import { Route as AuthenticatedNieuweSchadeRouteImport } from './routes/_authenticated/nieuwe-schade'
+import { Route as AuthenticatedInstellingenRouteImport } from './routes/_authenticated/instellingen'
+import { Route as AuthenticatedExcelImportRouteImport } from './routes/_authenticated/excel-import'
+import { Route as AuthenticatedDossiersRouteImport } from './routes/_authenticated/dossiers'
+import { Route as AuthenticatedBestekanalyseRouteImport } from './routes/_authenticated/bestekanalyse'
+import { Route as AuthenticatedAuditrapportRouteImport } from './routes/_authenticated/auditrapport'
+import { Route as AuthenticatedDossiersIdRouteImport } from './routes/_authenticated/dossiers.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSchadeberekeningRoute =
+  AuthenticatedSchadeberekeningRouteImport.update({
+    id: '/schadeberekening',
+    path: '/schadeberekening',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRegelingsdocumentenRoute =
+  AuthenticatedRegelingsdocumentenRouteImport.update({
+    id: '/regelingsdocumenten',
+    path: '/regelingsdocumenten',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedNieuweSchadeRoute =
+  AuthenticatedNieuweSchadeRouteImport.update({
+    id: '/nieuwe-schade',
+    path: '/nieuwe-schade',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInstellingenRoute =
+  AuthenticatedInstellingenRouteImport.update({
+    id: '/instellingen',
+    path: '/instellingen',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedExcelImportRoute =
+  AuthenticatedExcelImportRouteImport.update({
+    id: '/excel-import',
+    path: '/excel-import',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedDossiersRoute = AuthenticatedDossiersRouteImport.update({
+  id: '/dossiers',
+  path: '/dossiers',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedBestekanalyseRoute =
+  AuthenticatedBestekanalyseRouteImport.update({
+    id: '/bestekanalyse',
+    path: '/bestekanalyse',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAuditrapportRoute =
+  AuthenticatedAuditrapportRouteImport.update({
+    id: '/auditrapport',
+    path: '/auditrapport',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedDossiersIdRoute = AuthenticatedDossiersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedDossiersRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/login': typeof LoginRoute
+  '/auditrapport': typeof AuthenticatedAuditrapportRoute
+  '/bestekanalyse': typeof AuthenticatedBestekanalyseRoute
+  '/dossiers': typeof AuthenticatedDossiersRouteWithChildren
+  '/excel-import': typeof AuthenticatedExcelImportRoute
+  '/instellingen': typeof AuthenticatedInstellingenRoute
+  '/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
+  '/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
+  '/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
+  '/dossiers/$id': typeof AuthenticatedDossiersIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/auditrapport': typeof AuthenticatedAuditrapportRoute
+  '/bestekanalyse': typeof AuthenticatedBestekanalyseRoute
+  '/dossiers': typeof AuthenticatedDossiersRouteWithChildren
+  '/excel-import': typeof AuthenticatedExcelImportRoute
+  '/instellingen': typeof AuthenticatedInstellingenRoute
+  '/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
+  '/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
+  '/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/dossiers/$id': typeof AuthenticatedDossiersIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/auditrapport': typeof AuthenticatedAuditrapportRoute
+  '/_authenticated/bestekanalyse': typeof AuthenticatedBestekanalyseRoute
+  '/_authenticated/dossiers': typeof AuthenticatedDossiersRouteWithChildren
+  '/_authenticated/excel-import': typeof AuthenticatedExcelImportRoute
+  '/_authenticated/instellingen': typeof AuthenticatedInstellingenRoute
+  '/_authenticated/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
+  '/_authenticated/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
+  '/_authenticated/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/dossiers/$id': typeof AuthenticatedDossiersIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/auditrapport'
+    | '/bestekanalyse'
+    | '/dossiers'
+    | '/excel-import'
+    | '/instellingen'
+    | '/nieuwe-schade'
+    | '/regelingsdocumenten'
+    | '/schadeberekening'
+    | '/dossiers/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/auditrapport'
+    | '/bestekanalyse'
+    | '/dossiers'
+    | '/excel-import'
+    | '/instellingen'
+    | '/nieuwe-schade'
+    | '/regelingsdocumenten'
+    | '/schadeberekening'
+    | '/'
+    | '/dossiers/$id'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/auditrapport'
+    | '/_authenticated/bestekanalyse'
+    | '/_authenticated/dossiers'
+    | '/_authenticated/excel-import'
+    | '/_authenticated/instellingen'
+    | '/_authenticated/nieuwe-schade'
+    | '/_authenticated/regelingsdocumenten'
+    | '/_authenticated/schadeberekening'
+    | '/_authenticated/'
+    | '/_authenticated/dossiers/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/schadeberekening': {
+      id: '/_authenticated/schadeberekening'
+      path: '/schadeberekening'
+      fullPath: '/schadeberekening'
+      preLoaderRoute: typeof AuthenticatedSchadeberekeningRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/regelingsdocumenten': {
+      id: '/_authenticated/regelingsdocumenten'
+      path: '/regelingsdocumenten'
+      fullPath: '/regelingsdocumenten'
+      preLoaderRoute: typeof AuthenticatedRegelingsdocumentenRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/nieuwe-schade': {
+      id: '/_authenticated/nieuwe-schade'
+      path: '/nieuwe-schade'
+      fullPath: '/nieuwe-schade'
+      preLoaderRoute: typeof AuthenticatedNieuweSchadeRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/instellingen': {
+      id: '/_authenticated/instellingen'
+      path: '/instellingen'
+      fullPath: '/instellingen'
+      preLoaderRoute: typeof AuthenticatedInstellingenRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/excel-import': {
+      id: '/_authenticated/excel-import'
+      path: '/excel-import'
+      fullPath: '/excel-import'
+      preLoaderRoute: typeof AuthenticatedExcelImportRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dossiers': {
+      id: '/_authenticated/dossiers'
+      path: '/dossiers'
+      fullPath: '/dossiers'
+      preLoaderRoute: typeof AuthenticatedDossiersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/bestekanalyse': {
+      id: '/_authenticated/bestekanalyse'
+      path: '/bestekanalyse'
+      fullPath: '/bestekanalyse'
+      preLoaderRoute: typeof AuthenticatedBestekanalyseRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/auditrapport': {
+      id: '/_authenticated/auditrapport'
+      path: '/auditrapport'
+      fullPath: '/auditrapport'
+      preLoaderRoute: typeof AuthenticatedAuditrapportRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dossiers/$id': {
+      id: '/_authenticated/dossiers/$id'
+      path: '/$id'
+      fullPath: '/dossiers/$id'
+      preLoaderRoute: typeof AuthenticatedDossiersIdRouteImport
+      parentRoute: typeof AuthenticatedDossiersRoute
     }
   }
 }
 
+interface AuthenticatedDossiersRouteChildren {
+  AuthenticatedDossiersIdRoute: typeof AuthenticatedDossiersIdRoute
+}
+
+const AuthenticatedDossiersRouteChildren: AuthenticatedDossiersRouteChildren = {
+  AuthenticatedDossiersIdRoute: AuthenticatedDossiersIdRoute,
+}
+
+const AuthenticatedDossiersRouteWithChildren =
+  AuthenticatedDossiersRoute._addFileChildren(
+    AuthenticatedDossiersRouteChildren,
+  )
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAuditrapportRoute: typeof AuthenticatedAuditrapportRoute
+  AuthenticatedBestekanalyseRoute: typeof AuthenticatedBestekanalyseRoute
+  AuthenticatedDossiersRoute: typeof AuthenticatedDossiersRouteWithChildren
+  AuthenticatedExcelImportRoute: typeof AuthenticatedExcelImportRoute
+  AuthenticatedInstellingenRoute: typeof AuthenticatedInstellingenRoute
+  AuthenticatedNieuweSchadeRoute: typeof AuthenticatedNieuweSchadeRoute
+  AuthenticatedRegelingsdocumentenRoute: typeof AuthenticatedRegelingsdocumentenRoute
+  AuthenticatedSchadeberekeningRoute: typeof AuthenticatedSchadeberekeningRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAuditrapportRoute: AuthenticatedAuditrapportRoute,
+  AuthenticatedBestekanalyseRoute: AuthenticatedBestekanalyseRoute,
+  AuthenticatedDossiersRoute: AuthenticatedDossiersRouteWithChildren,
+  AuthenticatedExcelImportRoute: AuthenticatedExcelImportRoute,
+  AuthenticatedInstellingenRoute: AuthenticatedInstellingenRoute,
+  AuthenticatedNieuweSchadeRoute: AuthenticatedNieuweSchadeRoute,
+  AuthenticatedRegelingsdocumentenRoute: AuthenticatedRegelingsdocumentenRoute,
+  AuthenticatedSchadeberekeningRoute: AuthenticatedSchadeberekeningRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
