@@ -170,6 +170,45 @@ export type Database = {
         }
         Relationships: []
       }
+      import_batches: {
+        Row: {
+          aantal_overgeslagen: number
+          aantal_records: number
+          abex_basisindex: number | null
+          bestandsnaam: string
+          created_at: string
+          geldig_van: string | null
+          id: string
+          uitgevoerd_door: string | null
+          uitgevoerd_door_naam: string | null
+          verzekeraar: string
+        }
+        Insert: {
+          aantal_overgeslagen?: number
+          aantal_records?: number
+          abex_basisindex?: number | null
+          bestandsnaam: string
+          created_at?: string
+          geldig_van?: string | null
+          id?: string
+          uitgevoerd_door?: string | null
+          uitgevoerd_door_naam?: string | null
+          verzekeraar: string
+        }
+        Update: {
+          aantal_overgeslagen?: number
+          aantal_records?: number
+          abex_basisindex?: number | null
+          bestandsnaam?: string
+          created_at?: string
+          geldig_van?: string | null
+          id?: string
+          uitgevoerd_door?: string | null
+          uitgevoerd_door_naam?: string | null
+          verzekeraar?: string
+        }
+        Relationships: []
+      }
       klant_tokens: {
         Row: {
           bezwaar_tekst: string | null
