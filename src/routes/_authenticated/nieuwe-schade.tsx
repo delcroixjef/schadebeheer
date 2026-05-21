@@ -424,6 +424,24 @@ function Step2({ dossierId }: { dossierId: string }) {
           </button>
         </Card>
 
+        <BestekDropCard
+          dossierId={dossierId}
+          abexActueel={abexActueel}
+          abexBasis={abexBasis}
+          onLijnenExtracted={(extracted) => {
+            setLijnen((ls) => [
+              ...ls,
+              ...extracted.map((l) => ({
+                _local: crypto.randomUUID(),
+                omschrijving: l.omschrijving,
+                hoeveelheid: l.hoeveelheid,
+                eenheid: l.eenheid,
+                eenheidsprijs_excl_abex: l.eenheidsprijs_excl_abex,
+              })),
+            ]);
+          }}
+        />
+
         <Card>
           <SectionHeading>Polisopties</SectionHeading>
           <div className="flex items-center justify-between py-2 border-b-[0.5px] border-border">
