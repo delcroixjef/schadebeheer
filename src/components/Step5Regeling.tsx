@@ -61,14 +61,16 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
     return { subtotaal, indirect, btw, bruto, vrijstelling, netto };
   }, [lijnen, dossier]);
 
-  if (dossierQ.isLoading || !dossier) {
+  if (dossierQ.isLoading || !dossierQ.data) {
     return <Card><div className="text-[13px] text-text-secondary">Laden…</div></Card>;
   }
+  const dossierData = dossierQ.data;
 
-  const verzekeraarMeta = dossier.verzekeraar
-    ? VERZEKERAARS[dossier.verzekeraar as VerzekeraarKey]
+  const verzekeraarMeta = dossierData.verzekeraar
+    ? VERZEKERAARS[dossierData.verzekeraar as VerzekeraarKey]
     : null;
-  const schadeTypeLabel = SCHADE_TYPES.find((s) => s.value === dossier.schade_type)?.label ?? "";
+  const schadeTypeLabel = SCHADE_TYPES.find((s) => s.value === dossierData.schade_type)?.label ?? "";
+
 
   const timelineSteps = [
     { label: "Dossierdata", done: !!dossier.klant_naam },
