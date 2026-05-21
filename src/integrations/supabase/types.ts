@@ -75,7 +75,14 @@ export type Database = {
         Row: {
           abex_index_gebruikt: number | null
           abex_periode: string | null
+          ai_aanbeveling: string | null
+          ai_analyse_op: string | null
+          ai_score: number | null
+          ai_verdacht_label: string | null
           beheerder_id: string | null
+          bestek_filename: string | null
+          bestek_storage_path: string | null
+          bestek_uploaded_at: string | null
           created_at: string
           dossiernummer: string
           heeft_indirecte_verliezen: boolean
@@ -96,7 +103,14 @@ export type Database = {
         Insert: {
           abex_index_gebruikt?: number | null
           abex_periode?: string | null
+          ai_aanbeveling?: string | null
+          ai_analyse_op?: string | null
+          ai_score?: number | null
+          ai_verdacht_label?: string | null
           beheerder_id?: string | null
+          bestek_filename?: string | null
+          bestek_storage_path?: string | null
+          bestek_uploaded_at?: string | null
           created_at?: string
           dossiernummer?: string
           heeft_indirecte_verliezen?: boolean
@@ -117,7 +131,14 @@ export type Database = {
         Update: {
           abex_index_gebruikt?: number | null
           abex_periode?: string | null
+          ai_aanbeveling?: string | null
+          ai_analyse_op?: string | null
+          ai_score?: number | null
+          ai_verdacht_label?: string | null
           beheerder_id?: string | null
+          bestek_filename?: string | null
+          bestek_storage_path?: string | null
+          bestek_uploaded_at?: string | null
           created_at?: string
           dossiernummer?: string
           heeft_indirecte_verliezen?: boolean
