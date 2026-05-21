@@ -83,6 +83,8 @@ export type Database = {
           bestek_filename: string | null
           bestek_storage_path: string | null
           bestek_uploaded_at: string | null
+          bezwaar_op: string | null
+          bezwaar_tekst: string | null
           created_at: string
           dossiernummer: string
           heeft_indirecte_verliezen: boolean
@@ -91,6 +93,8 @@ export type Database = {
           klant_adres: string | null
           klant_naam: string
           klant_rijksregister: string | null
+          ondertekend_op: string | null
+          ondertekend_pdf_path: string | null
           polis_nummer: string | null
           schade_datum: string | null
           schade_omschrijving: string | null
@@ -111,6 +115,8 @@ export type Database = {
           bestek_filename?: string | null
           bestek_storage_path?: string | null
           bestek_uploaded_at?: string | null
+          bezwaar_op?: string | null
+          bezwaar_tekst?: string | null
           created_at?: string
           dossiernummer?: string
           heeft_indirecte_verliezen?: boolean
@@ -119,6 +125,8 @@ export type Database = {
           klant_adres?: string | null
           klant_naam: string
           klant_rijksregister?: string | null
+          ondertekend_op?: string | null
+          ondertekend_pdf_path?: string | null
           polis_nummer?: string | null
           schade_datum?: string | null
           schade_omschrijving?: string | null
@@ -139,6 +147,8 @@ export type Database = {
           bestek_filename?: string | null
           bestek_storage_path?: string | null
           bestek_uploaded_at?: string | null
+          bezwaar_op?: string | null
+          bezwaar_tekst?: string | null
           created_at?: string
           dossiernummer?: string
           heeft_indirecte_verliezen?: boolean
@@ -147,6 +157,8 @@ export type Database = {
           klant_adres?: string | null
           klant_naam?: string
           klant_rijksregister?: string | null
+          ondertekend_op?: string | null
+          ondertekend_pdf_path?: string | null
           polis_nummer?: string | null
           schade_datum?: string | null
           schade_omschrijving?: string | null
@@ -160,28 +172,34 @@ export type Database = {
       }
       klant_tokens: {
         Row: {
+          bezwaar_tekst: string | null
           created_at: string
           dossier_id: string
           expires_at: string
           gebruikt: boolean
+          handtekening_data: string | null
           id: string
           ondertekend_op: string | null
           token: string
         }
         Insert: {
+          bezwaar_tekst?: string | null
           created_at?: string
           dossier_id: string
           expires_at: string
           gebruikt?: boolean
+          handtekening_data?: string | null
           id?: string
           ondertekend_op?: string | null
           token: string
         }
         Update: {
+          bezwaar_tekst?: string | null
           created_at?: string
           dossier_id?: string
           expires_at?: string
           gebruikt?: boolean
+          handtekening_data?: string | null
           id?: string
           ondertekend_op?: string | null
           token?: string
