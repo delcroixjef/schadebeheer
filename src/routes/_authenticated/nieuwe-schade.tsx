@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
 import { WizardSteps, type WizardStep } from "@/components/WizardSteps";
 import { Step5Regeling } from "@/components/Step5Regeling";
+import { GlasbraakCalculator } from "@/components/GlasbraakCalculator";
 
 import { useSession } from "@/lib/session";
 import { formatSupabaseError } from "@/lib/supabase-error";
