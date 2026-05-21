@@ -4,7 +4,9 @@ import { useState } from "react";
 import { IconDeviceFloppy } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
+import { useSession } from "@/lib/session";
 import { VERZEKERAARS, VERZEKERAAR_KEYS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
+
 
 type SchadeType = (typeof SCHADE_TYPES)[number]["value"];
 
@@ -15,6 +17,8 @@ export const Route = createFileRoute("/_authenticated/nieuwe-schade")({
 function NewClaim() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const session = useSession();
+
 
   const [form, setForm] = useState({
     klant_naam: "",
@@ -35,11 +39,19 @@ function NewClaim() {
           verzekeraar: form.verzekeraar || null,
           schade_omschrijving: form.schade_omschrijving || null,
           status: "concept",
+          beheerder_id: session.userId,
         })
-        .select("id")
+        .select("id, dossiernummer")
         .single();
       if (error) throw error;
+      await supabase.from("audit_log").insert({
+        actie: "dossier_aangemaakt",
+        dossier_id: data.id,
+        uitgevoerd_door: session.userId,
+        detail_json: { dossiernummer: data.dossiernummer, door: session.displayName },
+      });
       return data;
+
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["dossiers"] });

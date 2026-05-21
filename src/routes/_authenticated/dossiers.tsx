@@ -7,6 +7,8 @@ import { Topbar, PrimaryButton, Card } from "@/components/Topbar";
 import { InsurerBadge, StatusBadge } from "@/components/InsurerBadge";
 import { formatDate } from "@/lib/format";
 import { VERZEKERAARS, STATUS_LABELS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
+import { useSession } from "@/lib/session";
+
 
 export const Route = createFileRoute("/_authenticated/dossiers")({
   component: DossiersPage,
@@ -17,17 +19,20 @@ const schadeLabel = (k: string | null) =>
 
 function DossiersPage() {
   const [q, setQ] = useState("");
+  const session = useSession();
   const { data } = useQuery({
-    queryKey: ["dossiers", "all"],
+    queryKey: ["dossiers", "all", session.role, session.userId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("dossiers")
-        .select("*")
-        .order("schade_datum", { ascending: false });
+      let query = supabase.from("dossiers").select("*").order("schade_datum", { ascending: false });
+      if (session.role !== "admin") {
+        query = query.eq("beheerder_id", session.userId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
   });
+
 
   const filtered = (data ?? []).filter((d) =>
     [d.klant_naam, d.schade_type ?? "", d.verzekeraar ?? ""]
