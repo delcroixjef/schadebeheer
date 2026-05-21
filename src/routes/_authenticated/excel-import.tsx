@@ -711,19 +711,21 @@ function ExcelImportPage() {
             <div className="flex flex-col gap-1.5">
               {sheets.map((s) => {
                 const chipCls =
-                  s.kind === "prijs_catalogus"
+                  isImportable(s.kind)
                     ? "bg-status-green-bg text-status-green-fg border-status-green-fg/30"
                     : s.kind === "glas_calculator"
                       ? "bg-primary-light text-primary-dark border-primary/30"
                       : "bg-secondary text-text-muted border-border";
                 const chipLabel =
-                  s.kind === "prijs_catalogus"
-                    ? "Prijscatalogus — importeerbaar"
-                    : s.kind === "glas_calculator"
-                      ? "Glasberekening — later beschikbaar"
-                      : s.kind === "genegeerd"
-                        ? "Genegeerd"
-                        : "Niet importeerbaar";
+                  s.kind === "prijs_macrotool"
+                    ? "Nieuwe Baloise macrotool — importeerbaar"
+                    : s.kind === "prijs_legacy"
+                      ? "Klassieke Baloise prijslijst — importeerbaar"
+                      : s.kind === "glas_calculator"
+                        ? "Glasberekening — apart te verwerken"
+                        : s.kind === "genegeerd"
+                          ? "Genegeerd"
+                          : "Onbekend formaat";
                 return (
                   <div
                     key={s.sheetName}
