@@ -24,21 +24,25 @@ export function PrimaryButton({
   children,
   onClick,
   type = "button",
+  disabled = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
   type?: "button" | "submit";
+  disabled?: boolean;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground rounded-md px-4 py-2 text-[13px] font-medium hover:bg-primary-dark transition-colors"
+      disabled={disabled}
+      className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground rounded-md px-4 py-2 text-[13px] font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {children}
     </button>
   );
 }
+
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
