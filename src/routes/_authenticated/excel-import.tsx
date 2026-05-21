@@ -768,28 +768,53 @@ function ExcelImportPage() {
           </Card>
 
 
-          {sheet && sheet.kind === "prijs_catalogus" && sheet.mapping && (
+          {sheet && isImportable(sheet.kind) && sheet.mapping && (
             <>
               <Card className="mb-4">
-                <SectionHeading>Validatie</SectionHeading>
+                <SectionHeading>Validatie — {KIND_BADGES[sheet.kind].label}</SectionHeading>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.5px] text-text-secondary mb-2">
                       Kolommapping
                     </div>
-                    <MappingRow label="Code" header={sheet.rawHeaders[sheet.mapping.code]} ok />
-                    <MappingRow label="Omschrijving" header={sheet.rawHeaders[sheet.mapping.omschrijving]} ok />
-                    <MappingRow
-                      label="Opmerking"
-                      header={sheet.mapping.opmerking !== null ? sheet.rawHeaders[sheet.mapping.opmerking] : "—"}
-                      ok={sheet.mapping.opmerking !== null}
-                      optional
-                    />
-                    <MappingRow label="Eenheid" header={sheet.rawHeaders[sheet.mapping.eenheid]} ok />
-                    <MappingRow label="Basisprijs" header={sheet.rawHeaders[sheet.mapping.prijs]} ok />
-                    <div className="mt-3 text-[11px] text-text-muted">
-                      Genegeerde kolommen: Description, Remarque, Aantal, Totaal, tweede Prijs, lege eerste kolom.
-                    </div>
+                    {sheet.mapping.kind === "macrotool" ? (
+                      <>
+                        <MappingRow label="Code" header={sheet.rawHeaders[sheet.mapping.code]} ok />
+                        <MappingRow label="Omschrijving" header={sheet.rawHeaders[sheet.mapping.omschrijving]} ok />
+                        <MappingRow
+                          label="Opmerking"
+                          header={sheet.mapping.opmerking !== null ? sheet.rawHeaders[sheet.mapping.opmerking] : "—"}
+                          ok={sheet.mapping.opmerking !== null}
+                          optional
+                        />
+                        <MappingRow label="Eenheid" header={sheet.rawHeaders[sheet.mapping.eenheid]} ok />
+                        <MappingRow label="Basisprijs" header={sheet.rawHeaders[sheet.mapping.prijs]} ok />
+                        <div className="mt-3 text-[11px] text-text-muted">
+                          Genegeerde kolommen: Description, Remarque, Aantal, Totaal, tweede Prijs, lege eerste kolom.
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <MappingRow label="Item (omschrijving)" header={sheet.rawHeaders[sheet.mapping.item]} ok />
+                        <MappingRow label="Eenheid" header={sheet.rawHeaders[sheet.mapping.eenheid]} ok />
+                        <MappingRow
+                          label="Min. basisprijs"
+                          header={`(kolom links van) ${sheet.rawHeaders[sheet.mapping.minDisplay] ?? ""}`}
+                          ok
+                        />
+                        <MappingRow
+                          label="Max. basisprijs"
+                          header={sheet.mapping.maxDisplay !== null ? `(kolom links van) ${sheet.rawHeaders[sheet.mapping.maxDisplay] ?? ""}` : "—"}
+                          ok={sheet.mapping.maxDisplay !== null}
+                          optional
+                        />
+                        <MappingRow label="Code" header="automatisch gegenereerd (legacy-XXXX)" ok />
+                        <MappingRow label="Categorie" header="laatste rubriekslijn boven de regel" ok />
+                        <div className="mt-3 text-[11px] text-text-muted">
+                          De zichtbare Min/Max-kolommen bevatten ABEX-formules. De echte basisprijzen worden gelezen uit de kolom net links ervan.
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div>
