@@ -487,6 +487,13 @@ function ExcelImportPage() {
     <>
       <Topbar title="Excel import" subtitle="Importeer referentieprijzen vanuit Baloise-prijsbestand" />
 
+      {successBanner && (
+        <div className="mb-4 rounded-md border-[0.5px] border-status-green-fg/40 bg-status-green-bg text-status-green-fg px-3 py-2 text-[12px] flex items-center gap-2">
+          <IconCheck size={14} />
+          <span>{successBanner}</span>
+        </div>
+      )}
+
       {sheets.length === 0 && (
         <Card>
           <SectionHeading>Bestand kiezen</SectionHeading>
@@ -530,8 +537,44 @@ function ExcelImportPage() {
           )}
 
           <Card className="mb-4">
-            <SectionHeading>Tabbladen — {filename}</SectionHeading>
-            <div className="flex gap-1.5 mb-4 flex-wrap">
+            <SectionHeading>Importanalyse — {filename}</SectionHeading>
+            <div className="flex flex-col gap-1.5">
+              {sheets.map((s) => {
+                const chipCls =
+                  s.kind === "prijs_catalogus"
+                    ? "bg-status-green-bg text-status-green-fg border-status-green-fg/30"
+                    : s.kind === "glas_calculator"
+                      ? "bg-primary-light text-primary-dark border-primary/30"
+                      : "bg-secondary text-text-muted border-border";
+                const chipLabel =
+                  s.kind === "prijs_catalogus"
+                    ? "Prijscatalogus — importeerbaar"
+                    : s.kind === "glas_calculator"
+                      ? "Glasberekening — later beschikbaar"
+                      : s.kind === "genegeerd"
+                        ? "Genegeerd"
+                        : "Niet importeerbaar";
+                return (
+                  <div
+                    key={s.sheetName}
+                    className="flex items-center justify-between gap-3 py-1.5 border-b-[0.5px] border-border last:border-0"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[13px] font-medium truncate">{s.sheetName}</span>
+                      <span className="text-[11px] text-text-muted truncate">{s.reason}</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium border-[0.5px] whitespace-nowrap ${chipCls}`}>
+                      {chipLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="mb-4">
+            <SectionHeading>Tabbladen</SectionHeading>
+            <div className="flex gap-1.5 flex-wrap">
               {sheets.map((s) => {
                 const badge = KIND_BADGES[s.kind];
                 const isActive = s.sheetName === activeSheet;
@@ -550,15 +593,8 @@ function ExcelImportPage() {
                 );
               })}
             </div>
-            {sheet && (
-              <div className="text-[12px] text-text-secondary">
-                {sheet.reason}
-                {sheet.headerRow !== null && (
-                  <> · koprij regel {sheet.headerRow + 1}</>
-                )}
-              </div>
-            )}
           </Card>
+
 
           {sheet && sheet.kind === "prijs_catalogus" && sheet.mapping && (
             <>
