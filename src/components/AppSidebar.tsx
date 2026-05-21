@@ -49,7 +49,9 @@ const sections: NavSection[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const displayName = "Dev Gebruiker";
+  const session = useSession();
+  const roleLabel = session.role === "admin" ? "Administrator" : "Schadebeheerder";
+
 
   return (
     <aside className="w-[220px] flex-shrink-0 bg-card border-r-[0.5px] border-border flex flex-col">
