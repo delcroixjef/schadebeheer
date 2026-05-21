@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
 import { WizardSteps } from "@/components/WizardSteps";
 import { analyseBestek, type BestekAnalyseResult } from "@/lib/bestek-analyse.functions";
-import { fmtEUR, fmtDateTime } from "@/lib/format";
+import { formatEur, formatDate } from "@/lib/format";
+const fmtEUR = formatEur;
+const fmtDateTime = (d: Date) => `${formatDate(d)} ${d.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}`;
 import { useSession } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/bestekanalyse")({
