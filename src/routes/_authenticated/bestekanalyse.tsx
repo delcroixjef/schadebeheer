@@ -12,7 +12,12 @@ const fmtEUR = formatEur;
 const fmtDateTime = (d: Date) => `${formatDate(d)} ${d.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}`;
 
 
+type BestekSearch = { dossier?: string };
+
 export const Route = createFileRoute("/_authenticated/bestekanalyse")({
+  validateSearch: (s: Record<string, unknown>): BestekSearch => ({
+    dossier: typeof s.dossier === "string" ? s.dossier : undefined,
+  }),
   component: BestekanalysePage,
 });
 
