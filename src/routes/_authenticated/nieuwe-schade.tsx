@@ -181,6 +181,22 @@ function Step1({ dossierId }: { dossierId?: string }) {
         <Field label="Polisnummer">
           <input className={inputCls} value={form.polis_nummer} onChange={(e) => setForm({ ...form, polis_nummer: e.target.value })} />
         </Field>
+        <Field label="WelZeker dossiernr">
+          <input
+            className={inputCls}
+            value={existing.data?.dossiernummer ?? "— wordt automatisch toegekend bij opslaan —"}
+            readOnly
+            disabled
+          />
+        </Field>
+        <Field label="Maatschappij dossiernr">
+          <input
+            className={inputCls}
+            value={form.maatschappij_dossiernr}
+            placeholder="bv. SIN-2026-0001"
+            onChange={(e) => setForm({ ...form, maatschappij_dossiernr: e.target.value })}
+          />
+        </Field>
         <Field label="Verzekeraar" required>
           <select className={inputCls} value={form.verzekeraar} required onChange={(e) => setForm({ ...form, verzekeraar: e.target.value as VerzekeraarKey })}>
             <option value="">— kies —</option>
