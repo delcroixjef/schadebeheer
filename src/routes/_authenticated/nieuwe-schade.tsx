@@ -17,6 +17,8 @@ export const Route = createFileRoute("/_authenticated/nieuwe-schade")({
 function NewClaim() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const session = useSession();
+
 
   const [form, setForm] = useState({
     klant_naam: "",
