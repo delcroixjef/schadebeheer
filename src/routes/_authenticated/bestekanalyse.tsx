@@ -81,12 +81,14 @@ function BestekanalysePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schade_lijnen")
-        .select("id,omschrijving,hoeveelheid,eenheid,eenheidsprijs_incl_abex")
-        .eq("dossier_id", dossierId);
+        .select("id,omschrijving,hoeveelheid,eenheid,eenheidsprijs_incl_abex,subtotaal,ai_oordeel,beheerder_oordeel,referentieprijs_baloise,afwijking_percentage")
+        .eq("dossier_id", dossierId)
+        .order("created_at");
       if (error) throw error;
       return data ?? [];
     },
   });
+
 
   const { data: refprijzen = [] } = useQuery({
     queryKey: ["referentieprijzen"],
