@@ -812,29 +812,32 @@ function ExcelImportPage() {
         <SectionHeading>Recente imports</SectionHeading>
         {history.data && history.data.length > 0 ? (
           <div>
-            <div className="grid grid-cols-[2fr_1fr_1fr_0.7fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
+            <div className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
               <span>Bestand</span>
               <span>Verzekeraar</span>
-              <span>Geldig van</span>
-              <span>ABEX</span>
+              <span className="text-right">Prijsregels</span>
               <span>Status</span>
+              <span>Door</span>
               <span>Datum</span>
             </div>
             {history.data.map((b) => (
               <div
                 key={b.id}
-                className="grid grid-cols-[2fr_1fr_1fr_0.7fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
+                className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
               >
                 <span className="truncate" title={b.bron_bestand ?? ""}>{b.bron_bestand ?? "—"}</span>
                 <span className="text-text-secondary">
                   {VERZEKERAARS[(b.verzekeraar as VerzekeraarKey) ?? "baloise"]?.name ?? String(b.verzekeraar ?? "—")}
                 </span>
-                <span className="text-text-secondary">{b.geldig_van ? formatDate(String(b.geldig_van)) : "—"}</span>
-                <span className="tabular-nums">{b.abex_basisindex ?? "—"}</span>
+                <BatchRowCount batchId={b.id as string} />
                 <StatusPill status={b.status as string} />
+                <span className="text-text-secondary truncate" title={(b.aangemaakt_door_naam as string) ?? ""}>
+                  {(b.aangemaakt_door_naam as string) ?? "—"}
+                </span>
                 <span className="text-text-muted text-[12px]">{formatDate(b.aangemaakt_op as string)}</span>
               </div>
             ))}
+
           </div>
         ) : (
           <p className="text-[13px] text-text-muted">Nog geen imports.</p>
