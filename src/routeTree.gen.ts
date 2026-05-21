@@ -14,6 +14,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as KlantTokenRouteImport } from './routes/klant.$token'
 import { Route as AuthenticatedSchadeberekeningRouteImport } from './routes/_authenticated/schadeberekening'
 import { Route as AuthenticatedRegelingsdocumentenRouteImport } from './routes/_authenticated/regelingsdocumenten'
+import { Route as AuthenticatedPrecedentenRouteImport } from './routes/_authenticated/precedenten'
 import { Route as AuthenticatedNieuweSchadeRouteImport } from './routes/_authenticated/nieuwe-schade'
 import { Route as AuthenticatedInstellingenRouteImport } from './routes/_authenticated/instellingen'
 import { Route as AuthenticatedExcelImportRouteImport } from './routes/_authenticated/excel-import'
@@ -47,6 +48,12 @@ const AuthenticatedRegelingsdocumentenRoute =
   AuthenticatedRegelingsdocumentenRouteImport.update({
     id: '/regelingsdocumenten',
     path: '/regelingsdocumenten',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPrecedentenRoute =
+  AuthenticatedPrecedentenRouteImport.update({
+    id: '/precedenten',
+    path: '/precedenten',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedNieuweSchadeRoute =
@@ -103,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/excel-import': typeof AuthenticatedExcelImportRoute
   '/instellingen': typeof AuthenticatedInstellingenRoute
   '/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
+  '/precedenten': typeof AuthenticatedPrecedentenRoute
   '/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
   '/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
   '/klant/$token': typeof KlantTokenRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/excel-import': typeof AuthenticatedExcelImportRoute
   '/instellingen': typeof AuthenticatedInstellingenRoute
   '/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
+  '/precedenten': typeof AuthenticatedPrecedentenRoute
   '/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
   '/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
   '/klant/$token': typeof KlantTokenRoute
@@ -132,6 +141,7 @@ export interface FileRoutesById {
   '/_authenticated/excel-import': typeof AuthenticatedExcelImportRoute
   '/_authenticated/instellingen': typeof AuthenticatedInstellingenRoute
   '/_authenticated/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
+  '/_authenticated/precedenten': typeof AuthenticatedPrecedentenRoute
   '/_authenticated/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
   '/_authenticated/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
   '/klant/$token': typeof KlantTokenRoute
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/excel-import'
     | '/instellingen'
     | '/nieuwe-schade'
+    | '/precedenten'
     | '/regelingsdocumenten'
     | '/schadeberekening'
     | '/klant/$token'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/excel-import'
     | '/instellingen'
     | '/nieuwe-schade'
+    | '/precedenten'
     | '/regelingsdocumenten'
     | '/schadeberekening'
     | '/klant/$token'
@@ -177,6 +189,7 @@ export interface FileRouteTypes {
     | '/_authenticated/excel-import'
     | '/_authenticated/instellingen'
     | '/_authenticated/nieuwe-schade'
+    | '/_authenticated/precedenten'
     | '/_authenticated/regelingsdocumenten'
     | '/_authenticated/schadeberekening'
     | '/klant/$token'
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/regelingsdocumenten'
       fullPath: '/regelingsdocumenten'
       preLoaderRoute: typeof AuthenticatedRegelingsdocumentenRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/precedenten': {
+      id: '/_authenticated/precedenten'
+      path: '/precedenten'
+      fullPath: '/precedenten'
+      preLoaderRoute: typeof AuthenticatedPrecedentenRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/nieuwe-schade': {
@@ -307,6 +327,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExcelImportRoute: typeof AuthenticatedExcelImportRoute
   AuthenticatedInstellingenRoute: typeof AuthenticatedInstellingenRoute
   AuthenticatedNieuweSchadeRoute: typeof AuthenticatedNieuweSchadeRoute
+  AuthenticatedPrecedentenRoute: typeof AuthenticatedPrecedentenRoute
   AuthenticatedRegelingsdocumentenRoute: typeof AuthenticatedRegelingsdocumentenRoute
   AuthenticatedSchadeberekeningRoute: typeof AuthenticatedSchadeberekeningRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -319,6 +340,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExcelImportRoute: AuthenticatedExcelImportRoute,
   AuthenticatedInstellingenRoute: AuthenticatedInstellingenRoute,
   AuthenticatedNieuweSchadeRoute: AuthenticatedNieuweSchadeRoute,
+  AuthenticatedPrecedentenRoute: AuthenticatedPrecedentenRoute,
   AuthenticatedRegelingsdocumentenRoute: AuthenticatedRegelingsdocumentenRoute,
   AuthenticatedSchadeberekeningRoute: AuthenticatedSchadeberekeningRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
@@ -336,3 +358,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
