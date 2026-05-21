@@ -9,10 +9,10 @@ import {
   IconUpload,
   IconChartBar,
   IconSettings,
-  IconLogout,
+  
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
-import { signOut, useAuth } from "@/hooks/use-auth";
+
 
 type NavItem = { to: string; label: string; icon: ComponentType<{ size?: number }> };
 type NavSection = { label: string; items: NavItem[] };
@@ -46,12 +46,7 @@ const sections: NavSection[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user } = useAuth();
-  const displayName =
-    (user?.user_metadata?.full_name as string | undefined) ??
-    (user?.user_metadata?.name as string | undefined) ??
-    user?.email ??
-    "Gebruiker";
+  const displayName = "Dev Gebruiker";
 
   return (
     <aside className="w-[220px] flex-shrink-0 bg-card border-r-[0.5px] border-border flex flex-col">
@@ -93,14 +88,6 @@ export function AppSidebar() {
           <div className="text-[12px] font-medium text-foreground truncate">{displayName}</div>
           <div className="text-[11px] text-text-muted">Schadebeheerder</div>
         </div>
-        <button
-          onClick={() => void signOut()}
-          className="text-text-muted hover:text-foreground transition-colors"
-          title="Afmelden"
-          aria-label="Afmelden"
-        >
-          <IconLogout size={16} />
-        </button>
       </div>
     </aside>
   );
