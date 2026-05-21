@@ -83,7 +83,7 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
       dossier_id: dossierId,
       uitgevoerd_door: session?.userId ?? null,
       actie,
-      detail_json: detail,
+      detail_json: detail as never,
     });
   }
 
