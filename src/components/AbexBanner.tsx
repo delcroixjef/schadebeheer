@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { IconRefresh } from "@tabler/icons-react";
+import { IconRefresh, IconAlertTriangle } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function AbexBanner() {
@@ -8,7 +8,7 @@ export function AbexBanner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("abex_index")
-        .select("indexwaarde, periode, ingangsdatum")
+        .select("indexwaarde, periode, ingangsdatum, created_at")
         .order("ingangsdatum", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -25,11 +25,15 @@ export function AbexBanner() {
       })
     : "—";
 
+  const stale =
+    data?.created_at &&
+    Date.now() - new Date(data.created_at).getTime() > 30 * 86400000;
+
   return (
     <div className="flex items-center justify-between gap-4 bg-primary-light border-[0.5px] border-primary rounded-lg px-4 py-2.5">
       <div className="flex items-center gap-6 text-[12px] text-primary-dark">
         <div>
-          <span className="text-text-muted mr-1.5">ABEX-index</span>
+          <span className="text-text-muted mr-1.5">Actieve ABEX-index</span>
           <span className="font-medium">{data?.indexwaarde ?? "—"}</span>
           {data?.periode && (
             <span className="text-text-secondary ml-1.5">({data.periode})</span>
@@ -39,6 +43,15 @@ export function AbexBanner() {
           <span className="text-text-muted mr-1.5">Bijgewerkt</span>
           <span>{updated}</span>
         </div>
+        {stale && (
+          <span
+            className="flex items-center gap-1 text-status-amber-fg"
+            title="ABEX-index mogelijk verouderd. Controleer manueel."
+          >
+            <IconAlertTriangle size={14} />
+            <span>Mogelijk verouderd</span>
+          </span>
+        )}
       </div>
       <button
         onClick={() => void refetch()}
