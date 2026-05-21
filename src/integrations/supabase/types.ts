@@ -93,6 +93,7 @@ export type Database = {
           klant_adres: string | null
           klant_naam: string
           klant_rijksregister: string | null
+          maatschappij_dossiernr: string | null
           ondertekend_op: string | null
           ondertekend_pdf_path: string | null
           polis_nummer: string | null
@@ -125,6 +126,7 @@ export type Database = {
           klant_adres?: string | null
           klant_naam: string
           klant_rijksregister?: string | null
+          maatschappij_dossiernr?: string | null
           ondertekend_op?: string | null
           ondertekend_pdf_path?: string | null
           polis_nummer?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           klant_adres?: string | null
           klant_naam?: string
           klant_rijksregister?: string | null
+          maatschappij_dossiernr?: string | null
           ondertekend_op?: string | null
           ondertekend_pdf_path?: string | null
           polis_nummer?: string | null
