@@ -200,9 +200,30 @@ function BestekanalysePage() {
       });
       return result;
     },
-    onSuccess: (r) => setAnalyse(r),
+    onSuccess: (r) => {
+      setAnalyse(r);
+      qc.invalidateQueries({ queryKey: ["schade_lijnen", dossierId] });
+      qc.invalidateQueries({ queryKey: ["dossiers-min"] });
+    },
     onError: (e: Error) => setError(e.message),
   });
+
+  const oordeelMutation = useMutation({
+    mutationFn: async ({ id, oordeel }: { id: string; oordeel: "goedgekeurd" | "afgekeurd" | null }) => {
+      const { error } = await supabase
+        .from("schade_lijnen")
+        .update({
+          beheerder_oordeel: oordeel,
+          beheerder_oordeel_op: oordeel ? new Date().toISOString() : null,
+          beheerder_oordeel_door: oordeel ? (session?.userId ?? null) : null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schade_lijnen", dossierId] }),
+    onError: (e: Error) => setError(e.message),
+  });
+
 
   function onPick(f: File | null) {
     setError(null);
