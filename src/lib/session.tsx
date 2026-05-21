@@ -17,21 +17,20 @@ declare global {
   }
 }
 
+const DEFAULT_SESSION: PortalSession = {
+  userId: "00000000-0000-0000-0000-000000000001",
+  displayName: "WelZeker Gebruiker",
+  email: "portaal@welzeker.be",
+  role: "admin",
+};
+
 function readSession(): PortalSession | null {
   if (typeof window === "undefined") return null;
   if (window.__WELZEKER_SESSION__) return window.__WELZEKER_SESSION__;
-
-  // Dev fallback: allow URL-param injection (e.g. ?portalDev=1) to simulate portal session.
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("portalDev") === "1" || import.meta.env.DEV) {
-    return {
-      userId: "00000000-0000-0000-0000-000000000001",
-      displayName: "Dev Gebruiker",
-      email: "dev@welzeker.be",
-      role: "admin",
-    };
-  }
-  return null;
+  // Portal is the gate — provide a default session so deep-links from the
+  // WelZeker portaal work. A real session can still be injected later via
+  // postMessage (welzeker:session) and will replace this default.
+  return DEFAULT_SESSION;
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
