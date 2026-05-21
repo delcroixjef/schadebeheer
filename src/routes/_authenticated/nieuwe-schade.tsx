@@ -8,6 +8,7 @@ import { WizardSteps, type WizardStep } from "@/components/WizardSteps";
 import { Step5Regeling } from "@/components/Step5Regeling";
 
 import { useSession } from "@/lib/session";
+import { formatSupabaseError } from "@/lib/supabase-error";
 import { VERZEKERAARS, VERZEKERAAR_KEYS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
 import { formatEur } from "@/lib/format";
 
