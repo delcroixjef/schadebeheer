@@ -12,6 +12,9 @@ import {
   
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
+import { useSession } from "@/lib/session";
+
+
 
 
 type NavItem = { to: string; label: string; icon: ComponentType<{ size?: number }> };
