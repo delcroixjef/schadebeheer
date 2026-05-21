@@ -879,9 +879,11 @@ function ExcelImportPage() {
                       <tr className="text-left text-text-secondary uppercase tracking-[0.5px] text-[11px] border-b-[0.5px] border-border">
                         <th className="py-2 px-3 font-medium">Code</th>
                         <th className="py-2 px-3 font-medium">Omschrijving</th>
+                        <th className="py-2 px-3 font-medium">Categorie</th>
                         <th className="py-2 px-3 font-medium">Opmerking</th>
                         <th className="py-2 px-3 font-medium">Eenheid</th>
-                        <th className="py-2 px-3 font-medium text-right">Basisprijs</th>
+                        <th className="py-2 px-3 font-medium text-right">Min. basisprijs</th>
+                        <th className="py-2 px-3 font-medium text-right">Max. basisprijs</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -889,10 +891,14 @@ function ExcelImportPage() {
                         <tr key={i} className="border-b-[0.5px] border-border last:border-0">
                           <td className="py-1.5 px-3 text-text-secondary">{r.code}</td>
                           <td className="py-1.5 px-3">{r.omschrijving}</td>
+                          <td className="py-1.5 px-3 text-text-muted">{r.categorie ?? ""}</td>
                           <td className="py-1.5 px-3 text-text-muted">{r.opmerking ?? ""}</td>
                           <td className="py-1.5 px-3 text-text-secondary">{r.eenheid}</td>
                           <td className="py-1.5 px-3 text-right tabular-nums">
                             {r.basisprijs.toFixed(2)}
+                          </td>
+                          <td className="py-1.5 px-3 text-right tabular-nums">
+                            {r.maximale_basisprijs != null ? r.maximale_basisprijs.toFixed(2) : "—"}
                           </td>
                         </tr>
                       ))}
@@ -917,6 +923,10 @@ function ExcelImportPage() {
                     label="Importeerbare prijsregels"
                     value={String(sheet.rows.length)}
                     strong
+                  />
+                  <SummaryRow
+                    label="Met max. basisprijs"
+                    value={String(sheet.rows.filter((r) => r.maximale_basisprijs != null).length)}
                   />
                   <SummaryRow
                     label="Overgeslagen rubrieken"
@@ -958,6 +968,11 @@ function ExcelImportPage() {
                     }
                   />
                 </dl>
+                {sheet.rows.some((r) => r.maximale_basisprijs != null) && (
+                  <div className="mt-3 rounded-md border-[0.5px] border-status-green-fg/30 bg-status-green-bg text-status-green-fg px-3 py-2 text-[12px]">
+                    Maximale kostprijs wordt mee opgeslagen en gebruikt voor bestekcontrole.
+                  </div>
+                )}
               </Card>
 
               <div className="flex items-center gap-3 mb-6">
