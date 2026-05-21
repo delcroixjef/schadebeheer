@@ -983,7 +983,7 @@ function ExcelImportPage() {
             </>
           )}
 
-          {sheet && sheet.kind !== "prijs_catalogus" && (
+          {sheet && !isImportable(sheet.kind) && (
             <Card className="mb-4">
               <div className="flex items-start gap-3 text-[13px]">
                 <IconAlertTriangle size={16} className="mt-0.5 text-text-muted flex-shrink-0" />
