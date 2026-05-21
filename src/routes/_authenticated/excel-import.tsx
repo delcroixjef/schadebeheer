@@ -339,6 +339,7 @@ function ExcelImportPage() {
     setAbexAutoDetected(null);
     setAbexManual(false);
     setErrorBanner(null);
+    setSuccessBanner(null);
   };
 
   const handleFile = useCallback(async (file: File) => {
