@@ -294,9 +294,10 @@ function AuditReport() {
                 const isOpen = expanded[d.id];
                 const entries = entriesByDossier.get(d.id) ?? [];
                 return (
-                  <>
-                    <tr key={d.id} className="border-b-[0.5px] border-border hover:bg-bg-muted">
+                  <tbody key={d.id} className="contents">
+                    <tr className="border-b-[0.5px] border-border hover:bg-bg-muted">
                       <td className="py-2 pr-2">
+
                         <button onClick={() => setExpanded((s) => ({ ...s, [d.id]: !s[d.id] }))} className="text-text-muted hover:text-foreground">
                           {isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
                         </button>
