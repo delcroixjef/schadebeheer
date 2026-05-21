@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, type DragEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,15 +7,45 @@ import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar
 import { WizardSteps } from "@/components/WizardSteps";
 import { analyseBestek, type BestekAnalyseResult } from "@/lib/bestek-analyse.functions";
 import { formatEur, formatDate } from "@/lib/format";
+import { useSession } from "@/lib/session";
 const fmtEUR = formatEur;
 const fmtDateTime = (d: Date) => `${formatDate(d)} ${d.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}`;
-import { useSession } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/bestekanalyse")({
   component: BestekanalysePage,
 });
 
 const MAX_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_FILE_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+const ACCEPTED_FILE_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png"]);
+
+function isAcceptedBestekFile(file: File) {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return ACCEPTED_FILE_TYPES.has(file.type) || ACCEPTED_FILE_EXTENSIONS.has(ext);
+}
+
+function getBestekMimeType(file: File) {
+  if (ACCEPTED_FILE_TYPES.has(file.type)) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  return file.type || "application/octet-stream";
+}
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const base64 = result.split(",")[1];
+      if (!base64) reject(new Error("Bestand kon niet gelezen worden."));
+      else resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Bestand kon niet gelezen worden."));
+    reader.readAsDataURL(file);
+  });
+}
 
 function BestekanalysePage() {
   const qc = useQueryClient();
@@ -26,6 +56,7 @@ function BestekanalysePage() {
   const [uploadedAt, setUploadedAt] = useState<Date | null>(null);
   const [storagePath, setStoragePath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const runAnalyse = useServerFn(analyseBestek);
 
@@ -73,16 +104,18 @@ function BestekanalysePage() {
   const uploadMutation = useMutation({
     mutationFn: async (f: File) => {
       if (!dossierId) throw new Error("Selecteer eerst een dossier");
+      if (!isAcceptedBestekFile(f)) throw new Error("Upload enkel PDF, JPG of PNG.");
       if (f.size > MAX_BYTES) throw new Error("Bestand is groter dan 10 MB");
       const ext = f.name.split(".").pop() ?? "bin";
+      const mimeType = getBestekMimeType(f);
       const path = `${dossierId}/${Date.now()}-${f.name}`;
       const { error: upErr } = await supabase.storage.from("bestekken").upload(path, f, {
         upsert: true,
-        contentType: f.type,
+        contentType: mimeType,
       });
       if (upErr) throw upErr;
       let pages: number | null = null;
-      if (f.type === "application/pdf") {
+      if (mimeType === "application/pdf") {
         const buf = await f.arrayBuffer();
         const txt = new TextDecoder("latin1").decode(buf);
         pages = (txt.match(/\/Type\s*\/Page[^s]/g) ?? []).length || null;
@@ -90,10 +123,11 @@ function BestekanalysePage() {
         pages = 1;
       }
       const now = new Date();
-      await supabase
+      const { error: dossierErr } = await supabase
         .from("dossiers")
         .update({ bestek_storage_path: path, bestek_filename: f.name, bestek_uploaded_at: now.toISOString() })
         .eq("id", dossierId);
+      if (dossierErr) throw dossierErr;
       return { path, pages, now, ext };
     },
     onSuccess: ({ path, pages, now }) => {
@@ -109,14 +143,13 @@ function BestekanalysePage() {
   const analyseMutation = useMutation({
     mutationFn: async () => {
       if (!file || !dossier) throw new Error("Geen bestand of dossier");
-      const buf = await file.arrayBuffer();
-      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const b64 = await fileToBase64(file);
       const abex = dossier.abex_index_gebruikt ?? 1010;
       const result = await runAnalyse({
         data: {
           dossierId,
           fileBase64: b64,
-          mimeType: file.type,
+          mimeType: getBestekMimeType(file),
           abexActueel: abex,
           schadeLijnen: schadeLijnen.map((l) => ({
             omschrijving: l.omschrijving,
@@ -170,12 +203,24 @@ function BestekanalysePage() {
 
   function onPick(f: File | null) {
     setError(null);
+    setDragOver(false);
     setAnalyse(null);
     setStoragePath(null);
     setPageCount(null);
     setUploadedAt(null);
     setFile(f);
     if (f) uploadMutation.mutate(f);
+  }
+
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (!dossierId) {
+      setError("Selecteer eerst een dossier");
+      return;
+    }
+    onPick(e.dataTransfer.files?.[0] ?? null);
   }
 
   const scoreColor = analyse
@@ -217,14 +262,38 @@ function BestekanalysePage() {
             className="hidden"
             onChange={(e) => onPick(e.target.files?.[0] ?? null)}
           />
-          <button
-            type="button"
-            disabled={!dossierId}
-            onClick={() => fileRef.current?.click()}
-            className="w-full border-[0.5px] border-dashed border-border rounded-md p-10 text-center text-[13px] text-text-muted hover:bg-muted/40 disabled:opacity-50"
+          <div
+            role="button"
+            tabIndex={0}
+            aria-disabled={!dossierId}
+            onClick={() => {
+              if (dossierId) fileRef.current?.click();
+            }}
+            onKeyDown={(e) => {
+              if (dossierId && (e.key === "Enter" || e.key === " ")) fileRef.current?.click();
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (dossierId) setDragOver(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (dossierId) setDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOver(false);
+            }}
+            onDrop={onDrop}
+            className={`w-full border-[0.5px] border-dashed rounded-md p-10 text-center text-[13px] text-text-muted hover:bg-muted/40 cursor-pointer ${!dossierId ? "opacity-50" : ""} ${
+              dragOver ? "border-primary bg-primary-light text-primary" : "border-border"
+            }`}
           >
-            {file ? "Ander bestand kiezen…" : "Klik om PDF, JPG of PNG te uploaden (max 10 MB)"}
-          </button>
+            {file ? "Ander bestand kiezen of hier droppen…" : "Sleep PDF, JPG of PNG hierheen of klik om te uploaden (max 10 MB)"}
+          </div>
 
           {uploadMutation.isPending && (
             <div className="mt-3 text-[12px] text-text-secondary">Uploaden…</div>
