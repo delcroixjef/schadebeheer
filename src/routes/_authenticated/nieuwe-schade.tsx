@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
 import { WizardSteps, type WizardStep } from "@/components/WizardSteps";
 import { Step5Regeling } from "@/components/Step5Regeling";
+import { GlasbraakCalculator } from "@/components/GlasbraakCalculator";
 
 import { useSession } from "@/lib/session";
 import { formatSupabaseError } from "@/lib/supabase-error";
@@ -248,6 +249,12 @@ function Step2({ dossierId }: { dossierId: string }) {
       return data;
     },
   });
+
+  // Glasbraak-dossiers krijgen de gespecialiseerde calculator i.p.v. de generieke schadelijnen-UI
+  if (dossierQ.data?.schade_type === "glasbraak") {
+    return <GlasbraakCalculator dossierId={dossierId} />;
+  }
+
   const abexQ = useQuery({
     queryKey: ["abex", "active"],
     queryFn: async () => {
