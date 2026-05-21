@@ -673,50 +673,116 @@ function ExcelImportPage() {
               </Card>
 
               <Card className="mb-4">
-                <SectionHeading>Voorbeeld — eerste 5 geldige rijen</SectionHeading>
-                <div className="overflow-x-auto">
+                <SectionHeading>
+                  Importpreview — {sheet.rows.length} prijsregels (eerste 30 getoond)
+                </SectionHeading>
+                <div className="overflow-x-auto max-h-[420px] overflow-y-auto border-[0.5px] border-border rounded-md">
                   <table className="w-full text-[12px]">
-                    <thead>
+                    <thead className="sticky top-0 bg-secondary">
                       <tr className="text-left text-text-secondary uppercase tracking-[0.5px] text-[11px] border-b-[0.5px] border-border">
-                        <th className="py-2 pr-3 font-medium">Code</th>
-                        <th className="py-2 pr-3 font-medium">Omschrijving</th>
-                        <th className="py-2 pr-3 font-medium">Opmerking</th>
-                        <th className="py-2 pr-3 font-medium">Eenheid</th>
-                        <th className="py-2 pr-3 font-medium text-right">Basisprijs</th>
+                        <th className="py-2 px-3 font-medium">Code</th>
+                        <th className="py-2 px-3 font-medium">Omschrijving</th>
+                        <th className="py-2 px-3 font-medium">Opmerking</th>
+                        <th className="py-2 px-3 font-medium">Eenheid</th>
+                        <th className="py-2 px-3 font-medium text-right">Basisprijs</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sheet.preview.map((row, i) => (
-                        <tr key={i} className="border-b-[0.5px] border-border">
-                          {row.map((c, j) => (
-                            <td
-                              key={j}
-                              className={`py-1.5 pr-3 ${j === 4 ? "text-right tabular-nums" : "text-text-secondary"}`}
-                            >
-                              {c}
-                            </td>
-                          ))}
+                      {sheet.rows.slice(0, 30).map((r, i) => (
+                        <tr key={i} className="border-b-[0.5px] border-border last:border-0">
+                          <td className="py-1.5 px-3 text-text-secondary">{r.code}</td>
+                          <td className="py-1.5 px-3">{r.omschrijving}</td>
+                          <td className="py-1.5 px-3 text-text-muted">{r.opmerking ?? ""}</td>
+                          <td className="py-1.5 px-3 text-text-secondary">{r.eenheid}</td>
+                          <td className="py-1.5 px-3 text-right tabular-nums">
+                            {r.basisprijs.toFixed(2)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <div className="text-[11px] text-text-muted mt-2 flex flex-wrap gap-3">
-                  <span>{sheet.rows.length} geldige rijen</span>
-                  <span>· rubriek-rijen overgeslagen: {sheet.skipped.rubriek}</span>
-                  <span>· lege rijen overgeslagen: {sheet.skipped.leeg}</span>
-                  <span>· formule-rijen overgeslagen: {sheet.skipped.formule}</span>
-                </div>
+              </Card>
+
+              <Card className="mb-4">
+                <SectionHeading>Samenvatting</SectionHeading>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[13px]">
+                  <SummaryRow
+                    label="Gelezen rijen"
+                    value={String(
+                      sheet.rows.length +
+                        sheet.skipped.rubriek +
+                        sheet.skipped.leeg +
+                        sheet.skipped.formule,
+                    )}
+                  />
+                  <SummaryRow
+                    label="Importeerbare prijsregels"
+                    value={String(sheet.rows.length)}
+                    strong
+                  />
+                  <SummaryRow
+                    label="Overgeslagen rubrieken"
+                    value={String(sheet.skipped.rubriek)}
+                  />
+                  <SummaryRow
+                    label="Overgeslagen lege regels"
+                    value={String(sheet.skipped.leeg)}
+                  />
+                  <SummaryRow
+                    label="Overgeslagen formule-rijen"
+                    value={String(sheet.skipped.formule)}
+                  />
+                  <SummaryRow
+                    label="ABEX basisindex"
+                    value={
+                      abexValue === ""
+                        ? "—"
+                        : abexAutoDetected !== null && !abexManual
+                          ? `${abexValue} (automatisch gedetecteerd)`
+                          : `${abexValue} (handmatig)`
+                    }
+                  />
+                  <SummaryRow
+                    label="Genegeerde FR-kolommen"
+                    value="Description, Remarque"
+                  />
+                  <SummaryRow
+                    label="Genegeerde tabbladen"
+                    value={
+                      sheets
+                        .filter((s) => s.kind === "glas_calculator" || s.kind === "genegeerd")
+                        .map((s) =>
+                          s.kind === "glas_calculator"
+                            ? `${s.sheetName} (glasberekening)`
+                            : s.sheetName,
+                        )
+                        .join(", ") || "—"
+                    }
+                  />
+                </dl>
               </Card>
 
               <div className="flex items-center gap-3 mb-6">
                 <PrimaryButton onClick={doImport} disabled={!canImport}>
-                  {importing ? "Importeren…" : `Importeer ${sheet.rows.length} rijen`}
+                  {importing ? (
+                    <span className="inline-flex items-center gap-2">
+                      <IconLoader2 size={14} className="animate-spin" />
+                      Importeren…
+                    </span>
+                  ) : (
+                    `Importeer ${sheet.rows.length} prijsregels`
+                  )}
                 </PrimaryButton>
-                <button onClick={reset} className="text-[13px] text-text-secondary hover:text-foreground">
+                <button
+                  onClick={reset}
+                  disabled={importing}
+                  className="text-[13px] text-text-secondary hover:text-foreground disabled:opacity-50"
+                >
                   Annuleren
                 </button>
               </div>
+
             </>
           )}
 
