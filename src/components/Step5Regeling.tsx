@@ -43,33 +43,34 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
 
   const [betaalreferentie, setBetaalreferentie] = useState<string>("");
 
-  const dossier = dossierQ.data;
   const lijnen = lijnenQ.data ?? [];
 
   // sync betaalreferentie once dossier loaded
   useMemo(() => {
-    if (dossier && !betaalreferentie) setBetaalreferentie(dossier.dossiernummer);
-  }, [dossier, betaalreferentie]);
+    if (dossierQ.data && !betaalreferentie) setBetaalreferentie(dossierQ.data.dossiernummer);
+  }, [dossierQ.data, betaalreferentie]);
 
   const totals = useMemo(() => {
+    const d = dossierQ.data;
     const subtotaal = lijnen.reduce((s, l) => s + Number(l.subtotaal ?? 0), 0);
-    const indirect = dossier?.heeft_indirecte_verliezen ? subtotaal * INDIRECT : 0;
+    const indirect = d?.heeft_indirecte_verliezen ? subtotaal * INDIRECT : 0;
     const btw = (subtotaal + indirect) * BTW;
     const bruto = subtotaal + indirect + btw;
-    const vrijstelling = dossier?.heeft_vrijstelling ? Number(dossier.vrijstelling_bedrag ?? 0) : 0;
+    const vrijstelling = d?.heeft_vrijstelling ? Number(d.vrijstelling_bedrag ?? 0) : 0;
     const netto = Math.max(0, bruto - vrijstelling);
     return { subtotaal, indirect, btw, bruto, vrijstelling, netto };
-  }, [lijnen, dossier]);
+  }, [lijnen, dossierQ.data]);
 
   if (dossierQ.isLoading || !dossierQ.data) {
     return <Card><div className="text-[13px] text-text-secondary">Laden…</div></Card>;
   }
-  const dossierData = dossierQ.data;
+  const dossier = dossierQ.data;
 
-  const verzekeraarMeta = dossierData.verzekeraar
-    ? VERZEKERAARS[dossierData.verzekeraar as VerzekeraarKey]
+  const verzekeraarMeta = dossier.verzekeraar
+    ? VERZEKERAARS[dossier.verzekeraar as VerzekeraarKey]
     : null;
-  const schadeTypeLabel = SCHADE_TYPES.find((s) => s.value === dossierData.schade_type)?.label ?? "";
+  const schadeTypeLabel = SCHADE_TYPES.find((s) => s.value === dossier.schade_type)?.label ?? "";
+
 
 
   const timelineSteps = [
