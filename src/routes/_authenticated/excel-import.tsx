@@ -547,13 +547,13 @@ function ExcelImportPage() {
   const sheet = sheets.find((s) => s.sheetName === activeSheet) ?? null;
   const canImport =
     !!sheet &&
-    sheet.kind === "prijs_catalogus" &&
+    isImportable(sheet.kind) &&
     sheet.rows.length > 0 &&
     abexValue !== "" &&
     !importing;
 
   const doImport = async () => {
-    if (!sheet || !filename || sheet.kind !== "prijs_catalogus") return;
+    if (!sheet || !filename || !isImportable(sheet.kind)) return;
     setImporting(true);
     setErrorBanner(null);
     let batchId: string | null = null;
