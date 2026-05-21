@@ -4,7 +4,9 @@ import { useState } from "react";
 import { IconDeviceFloppy } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
+import { useSession } from "@/lib/session";
 import { VERZEKERAARS, VERZEKERAAR_KEYS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
+
 
 type SchadeType = (typeof SCHADE_TYPES)[number]["value"];
 
