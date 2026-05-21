@@ -1,38 +1,23 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/AppSidebar";
-import { useAuth } from "@/hooks/use-auth";
+import { AbexBanner } from "@/components/AbexBanner";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
 });
 
 function AuthenticatedLayout() {
-  const { session, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !session) {
-      void navigate({ to: "/login" });
-    }
-  }, [loading, session, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-[13px] text-text-muted">Laden…</div>
-      </div>
-    );
-  }
-
-  if (!session) return null;
-
   return (
     <div className="flex h-screen min-h-[600px] bg-background">
       <AppSidebar />
-      <main className="flex-1 overflow-auto p-6">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-6 pt-4">
+          <AbexBanner />
+        </div>
+        <main className="flex-1 overflow-auto p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
