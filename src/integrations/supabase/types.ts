@@ -263,11 +263,13 @@ export type Database = {
           batch_id: string | null
           bron_bestand: string | null
           categorie: string | null
+          categorie_text: string | null
           code: string | null
           created_at: string
           eenheid: string | null
           geldig_van: string | null
           id: string
+          maximale_basisprijs: number | null
           omschrijving: string
           opmerking: string | null
           verzekeraar: string
@@ -278,11 +280,13 @@ export type Database = {
           batch_id?: string | null
           bron_bestand?: string | null
           categorie?: string | null
+          categorie_text?: string | null
           code?: string | null
           created_at?: string
           eenheid?: string | null
           geldig_van?: string | null
           id?: string
+          maximale_basisprijs?: number | null
           omschrijving: string
           opmerking?: string | null
           verzekeraar?: string
@@ -293,11 +297,13 @@ export type Database = {
           batch_id?: string | null
           bron_bestand?: string | null
           categorie?: string | null
+          categorie_text?: string | null
           code?: string | null
           created_at?: string
           eenheid?: string | null
           geldig_van?: string | null
           id?: string
+          maximale_basisprijs?: number | null
           omschrijving?: string
           opmerking?: string | null
           verzekeraar?: string
