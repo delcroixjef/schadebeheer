@@ -16,6 +16,21 @@ export const Route = createFileRoute("/_authenticated/bestekanalyse")({
 });
 
 const MAX_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_FILE_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const base64 = result.split(",")[1];
+      if (!base64) reject(new Error("Bestand kon niet gelezen worden."));
+      else resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Bestand kon niet gelezen worden."));
+    reader.readAsDataURL(file);
+  });
+}
 
 function BestekanalysePage() {
   const qc = useQueryClient();
@@ -26,6 +41,7 @@ function BestekanalysePage() {
   const [uploadedAt, setUploadedAt] = useState<Date | null>(null);
   const [storagePath, setStoragePath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const runAnalyse = useServerFn(analyseBestek);
 
@@ -73,6 +89,7 @@ function BestekanalysePage() {
   const uploadMutation = useMutation({
     mutationFn: async (f: File) => {
       if (!dossierId) throw new Error("Selecteer eerst een dossier");
+      if (!ACCEPTED_FILE_TYPES.has(f.type)) throw new Error("Upload enkel PDF, JPG of PNG.");
       if (f.size > MAX_BYTES) throw new Error("Bestand is groter dan 10 MB");
       const ext = f.name.split(".").pop() ?? "bin";
       const path = `${dossierId}/${Date.now()}-${f.name}`;
@@ -109,8 +126,7 @@ function BestekanalysePage() {
   const analyseMutation = useMutation({
     mutationFn: async () => {
       if (!file || !dossier) throw new Error("Geen bestand of dossier");
-      const buf = await file.arrayBuffer();
-      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const b64 = await fileToBase64(file);
       const abex = dossier.abex_index_gebruikt ?? 1010;
       const result = await runAnalyse({
         data: {
@@ -176,6 +192,17 @@ function BestekanalysePage() {
     setUploadedAt(null);
     setFile(f);
     if (f) uploadMutation.mutate(f);
+  }
+
+  function onDrop(e: React.DragEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (!dossierId) {
+      setError("Selecteer eerst een dossier");
+      return;
+    }
+    onPick(e.dataTransfer.files?.[0] ?? null);
   }
 
   const scoreColor = analyse
