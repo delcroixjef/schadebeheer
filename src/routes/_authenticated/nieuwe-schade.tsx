@@ -39,11 +39,19 @@ function NewClaim() {
           verzekeraar: form.verzekeraar || null,
           schade_omschrijving: form.schade_omschrijving || null,
           status: "concept",
+          beheerder_id: session.userId,
         })
-        .select("id")
+        .select("id, dossiernummer")
         .single();
       if (error) throw error;
+      await supabase.from("audit_log").insert({
+        actie: "dossier_aangemaakt",
+        dossier_id: data.id,
+        uitgevoerd_door: session.userId,
+        detail_json: { dossiernummer: data.dossiernummer, door: session.displayName },
+      });
       return data;
+
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ["dossiers"] });
