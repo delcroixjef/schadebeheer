@@ -212,7 +212,7 @@ function BestekanalysePage() {
     if (f) uploadMutation.mutate(f);
   }
 
-  function onDrop(e: DragEvent<HTMLButtonElement>) {
+  function onDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
@@ -262,10 +262,16 @@ function BestekanalysePage() {
             className="hidden"
             onChange={(e) => onPick(e.target.files?.[0] ?? null)}
           />
-          <button
-            type="button"
-            disabled={!dossierId}
-            onClick={() => fileRef.current?.click()}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-disabled={!dossierId}
+            onClick={() => {
+              if (dossierId) fileRef.current?.click();
+            }}
+            onKeyDown={(e) => {
+              if (dossierId && (e.key === "Enter" || e.key === " ")) fileRef.current?.click();
+            }}
             onDragEnter={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -282,12 +288,12 @@ function BestekanalysePage() {
               setDragOver(false);
             }}
             onDrop={onDrop}
-            className={`w-full border-[0.5px] border-dashed rounded-md p-10 text-center text-[13px] text-text-muted hover:bg-muted/40 disabled:opacity-50 ${
+            className={`w-full border-[0.5px] border-dashed rounded-md p-10 text-center text-[13px] text-text-muted hover:bg-muted/40 cursor-pointer ${!dossierId ? "opacity-50" : ""} ${
               dragOver ? "border-primary bg-primary-light text-primary" : "border-border"
             }`}
           >
             {file ? "Ander bestand kiezen of hier droppen…" : "Sleep PDF, JPG of PNG hierheen of klik om te uploaden (max 10 MB)"}
-          </button>
+          </div>
 
           {uploadMutation.isPending && (
             <div className="mt-3 text-[12px] text-text-secondary">Uploaden…</div>
