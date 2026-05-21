@@ -5,51 +5,59 @@ import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading } from "@/components/Topbar";
 import { InsurerBadge, StatusBadge } from "@/components/InsurerBadge";
 import { formatEur, formatDate } from "@/lib/format";
+import { VERZEKERAARS, STATUS_LABELS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
 
 export const Route = createFileRoute("/_authenticated/dossiers/$id")({
   component: DossierDetail,
 });
+
+const schadeLabel = (k: string | null) =>
+  SCHADE_TYPES.find((s) => s.value === k)?.label ?? k ?? "—";
 
 function DossierDetail() {
   const { id } = Route.useParams();
   const { data, isLoading } = useQuery({
     queryKey: ["dossier", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("dossiers")
-        .select("*, insurer:insurers(name, color_token, max_authority_amount)")
-        .eq("id", id)
-        .maybeSingle();
+      const [{ data: dossier, error }, { data: lijnen }] = await Promise.all([
+        supabase.from("dossiers").select("*").eq("id", id).maybeSingle(),
+        supabase.from("schade_lijnen").select("*").eq("dossier_id", id),
+      ]);
       if (error) throw error;
-      return data;
+      return { dossier, lijnen: lijnen ?? [] };
     },
   });
 
   if (isLoading) return <div className="text-[13px] text-text-muted">Laden…</div>;
-  if (!data) return <div className="text-[13px] text-text-muted">Dossier niet gevonden.</div>;
+  if (!data?.dossier) return <div className="text-[13px] text-text-muted">Dossier niet gevonden.</div>;
+
+  const d = data.dossier;
+  const ins = d.verzekeraar ? VERZEKERAARS[d.verzekeraar as VerzekeraarKey] : null;
+  const totaal = data.lijnen.reduce((sum, l) => sum + Number(l.subtotaal ?? 0), 0);
 
   return (
     <>
       <Link to="/dossiers" className="inline-flex items-center gap-1 text-[12px] text-text-secondary hover:text-foreground mb-3">
         <IconArrowLeft size={14} /> Terug naar dossiers
       </Link>
-      <Topbar title={data.customer_name} subtitle={`${data.damage_type} — ${formatDate(data.damage_date)}`} />
+      <Topbar title={d.klant_naam} subtitle={`${schadeLabel(d.schade_type)} — ${d.schade_datum ? formatDate(d.schade_datum) : "—"}`} />
 
       <div className="grid grid-cols-[1fr_340px] gap-4">
         <Card>
           <SectionHeading>Schadegegevens</SectionHeading>
           <dl className="grid grid-cols-2 gap-y-3 text-[13px]">
-            <dt className="text-text-secondary">Klant</dt><dd className="font-medium">{data.customer_name}</dd>
-            <dt className="text-text-secondary">Type schade</dt><dd>{data.damage_type}</dd>
-            <dt className="text-text-secondary">Schadedatum</dt><dd>{formatDate(data.damage_date)}</dd>
-            <dt className="text-text-secondary">Bedrag</dt><dd className="font-medium">{formatEur(Number(data.amount))}</dd>
-            <dt className="text-text-secondary">Status</dt><dd><StatusBadge status={data.status} label={data.status_label} /></dd>
+            <dt className="text-text-secondary">Dossier</dt><dd className="font-medium">{d.dossiernummer}</dd>
+            <dt className="text-text-secondary">Klant</dt><dd className="font-medium">{d.klant_naam}</dd>
+            <dt className="text-text-secondary">Type schade</dt><dd>{schadeLabel(d.schade_type)}</dd>
+            <dt className="text-text-secondary">Schadedatum</dt><dd>{d.schade_datum ? formatDate(d.schade_datum) : "—"}</dd>
+            <dt className="text-text-secondary">Totaal</dt><dd className="font-medium">{formatEur(totaal)}</dd>
+            <dt className="text-text-secondary">Status</dt><dd><StatusBadge status={d.status} label={STATUS_LABELS[d.status]} /></dd>
           </dl>
 
-          {data.notes && (
+          {d.schade_omschrijving && (
             <>
-              <SectionHeading><span className="mt-6 block">Notities</span></SectionHeading>
-              <p className="text-[13px] text-text-secondary whitespace-pre-wrap">{data.notes}</p>
+              <div className="mt-6"><SectionHeading>Omschrijving</SectionHeading></div>
+              <p className="text-[13px] text-text-secondary whitespace-pre-wrap">{d.schade_omschrijving}</p>
             </>
           )}
         </Card>
@@ -57,13 +65,15 @@ function DossierDetail() {
         <div className="flex flex-col gap-3">
           <Card>
             <div className="text-[14px] font-medium text-foreground mb-3">Verzekeraar</div>
-            {data.insurer && (
+            {ins ? (
               <>
-                <InsurerBadge name={data.insurer.name} color={data.insurer.color_token} />
+                <InsurerBadge name={ins.name} color={ins.color} />
                 <div className="mt-3 text-[12px] text-text-secondary">
-                  Regelingsbevoegdheid: <span className="font-medium text-foreground">≤ {formatEur(Number(data.insurer.max_authority_amount))}</span>
+                  Regelingsbevoegdheid: <span className="font-medium text-foreground">≤ {formatEur(ins.maxAuthority)}</span>
                 </div>
               </>
+            ) : (
+              <span className="text-[12px] text-text-muted">Niet ingesteld</span>
             )}
           </Card>
 
