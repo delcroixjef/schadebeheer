@@ -14,7 +14,163 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      abex_index: {
+        Row: {
+          id: string
+          is_active: boolean
+          period_label: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          period_label: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          period_label?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          dossier_id: string | null
+          id: string
+          payload: Json | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          dossier_id?: string | null
+          id?: string
+          payload?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          dossier_id?: string | null
+          id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dossiers: {
+        Row: {
+          amount: number
+          assigned_to: string | null
+          created_at: string
+          customer_name: string
+          customer_type: string | null
+          damage_date: string
+          damage_type: string
+          id: string
+          insurer_id: string | null
+          notes: string | null
+          status: string
+          status_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          assigned_to?: string | null
+          created_at?: string
+          customer_name: string
+          customer_type?: string | null
+          damage_date: string
+          damage_type: string
+          id?: string
+          insurer_id?: string | null
+          notes?: string | null
+          status?: string
+          status_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          assigned_to?: string | null
+          created_at?: string
+          customer_name?: string
+          customer_type?: string | null
+          damage_date?: string
+          damage_type?: string
+          id?: string
+          insurer_id?: string | null
+          notes?: string | null
+          status?: string
+          status_label?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossiers_insurer_id_fkey"
+            columns: ["insurer_id"]
+            isOneToOne: false
+            referencedRelation: "insurers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurers: {
+        Row: {
+          color_token: string
+          created_at: string
+          id: string
+          max_authority_amount: number
+          name: string
+        }
+        Insert: {
+          color_token?: string
+          created_at?: string
+          id?: string
+          max_authority_amount?: number
+          name: string
+        }
+        Update: {
+          color_token?: string
+          created_at?: string
+          id?: string
+          max_authority_amount?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
