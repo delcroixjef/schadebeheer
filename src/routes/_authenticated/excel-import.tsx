@@ -180,7 +180,17 @@ function ExcelImportPage() {
       const categorieKey = sheet.mapping.categorie;
 
       let skipped = 0;
-      const inserts: Record<string, unknown>[] = [];
+      type InsertRow = {
+        verzekeraar: string;
+        omschrijving: string;
+        basisprijs: number;
+        eenheid: string | null;
+        categorie: string | null;
+        abex_basisindex: number;
+        geldig_van: string;
+        bron_bestand: string;
+      };
+      const inserts: InsertRow[] = [];
       for (const row of sheet.rows) {
         const omsch = String(row[omschrijvingKey] ?? "").trim();
         const prijs = Number(row[prijsKey]);
