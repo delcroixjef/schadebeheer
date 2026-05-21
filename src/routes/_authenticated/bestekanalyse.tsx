@@ -248,9 +248,27 @@ function BestekanalysePage() {
             type="button"
             disabled={!dossierId}
             onClick={() => fileRef.current?.click()}
-            className="w-full border-[0.5px] border-dashed border-border rounded-md p-10 text-center text-[13px] text-text-muted hover:bg-muted/40 disabled:opacity-50"
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (dossierId) setDragOver(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (dossierId) setDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOver(false);
+            }}
+            onDrop={onDrop}
+            className={`w-full border-[0.5px] border-dashed rounded-md p-10 text-center text-[13px] text-text-muted hover:bg-muted/40 disabled:opacity-50 ${
+              dragOver ? "border-primary bg-primary-light text-primary" : "border-border"
+            }`}
           >
-            {file ? "Ander bestand kiezen…" : "Klik om PDF, JPG of PNG te uploaden (max 10 MB)"}
+            {file ? "Ander bestand kiezen of hier droppen…" : "Sleep PDF, JPG of PNG hierheen of klik om te uploaden (max 10 MB)"}
           </button>
 
           {uploadMutation.isPending && (
