@@ -17,6 +17,12 @@ export const Route = createFileRoute("/_authenticated/bestekanalyse")({
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_FILE_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+const ACCEPTED_FILE_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png"]);
+
+function isAcceptedBestekFile(file: File) {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return ACCEPTED_FILE_TYPES.has(file.type) || ACCEPTED_FILE_EXTENSIONS.has(ext);
+}
 
 function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -89,7 +95,7 @@ function BestekanalysePage() {
   const uploadMutation = useMutation({
     mutationFn: async (f: File) => {
       if (!dossierId) throw new Error("Selecteer eerst een dossier");
-      if (!ACCEPTED_FILE_TYPES.has(f.type)) throw new Error("Upload enkel PDF, JPG of PNG.");
+      if (!isAcceptedBestekFile(f)) throw new Error("Upload enkel PDF, JPG of PNG.");
       if (f.size > MAX_BYTES) throw new Error("Bestand is groter dan 10 MB");
       const ext = f.name.split(".").pop() ?? "bin";
       const path = `${dossierId}/${Date.now()}-${f.name}`;
@@ -107,10 +113,11 @@ function BestekanalysePage() {
         pages = 1;
       }
       const now = new Date();
-      await supabase
+      const { error: dossierErr } = await supabase
         .from("dossiers")
         .update({ bestek_storage_path: path, bestek_filename: f.name, bestek_uploaded_at: now.toISOString() })
         .eq("id", dossierId);
+      if (dossierErr) throw dossierErr;
       return { path, pages, now, ext };
     },
     onSuccess: ({ path, pages, now }) => {
@@ -186,6 +193,7 @@ function BestekanalysePage() {
 
   function onPick(f: File | null) {
     setError(null);
+    setDragOver(false);
     setAnalyse(null);
     setStoragePath(null);
     setPageCount(null);
