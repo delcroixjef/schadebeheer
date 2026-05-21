@@ -278,6 +278,13 @@ function BestekanalysePage() {
         <Card>
           <SectionHeading>Klantbestek uploaden</SectionHeading>
 
+          {refprijzen.length === 0 && (
+            <div className="mb-3 text-[12px] text-[#7A4D0D] bg-[#FDF1DA] border-[0.5px] border-[#BA7517] rounded-md p-2">
+              Geen referentieprijzen in de catalogus. Lees eerst een prijzen-Excel in via <Link to="/excel-import" className="underline">Excel-import</Link>. Zonder catalogus kan er geen objectieve bestekanalyse gemaakt worden.
+            </div>
+          )}
+
+
           <label className="block text-[12px] text-text-secondary mb-1">Dossier</label>
           <select
             value={dossierId}
