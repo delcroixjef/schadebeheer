@@ -5,6 +5,8 @@ import { IconDeviceFloppy, IconPlus, IconTrash, IconArrowRight, IconAlertTriangl
 import { supabase } from "@/integrations/supabase/client";
 import { Topbar, Card, SectionHeading, PrimaryButton } from "@/components/Topbar";
 import { WizardSteps, type WizardStep } from "@/components/WizardSteps";
+import { Step5Regeling } from "@/components/Step5Regeling";
+
 import { useSession } from "@/lib/session";
 import { VERZEKERAARS, VERZEKERAAR_KEYS, SCHADE_TYPES, type VerzekeraarKey } from "@/lib/insurers";
 import { formatEur } from "@/lib/format";
