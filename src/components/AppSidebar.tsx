@@ -12,7 +12,7 @@ import {
   IconLogout,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
-import { signOut, useAuth } from "@/hooks/use-auth";
+
 
 type NavItem = { to: string; label: string; icon: ComponentType<{ size?: number }> };
 type NavSection = { label: string; items: NavItem[] };
