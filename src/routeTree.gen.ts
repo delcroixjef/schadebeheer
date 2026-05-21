@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as KlantTokenRouteImport } from './routes/klant.$token'
 import { Route as AuthenticatedSchadeberekeningRouteImport } from './routes/_authenticated/schadeberekening'
 import { Route as AuthenticatedRegelingsdocumentenRouteImport } from './routes/_authenticated/regelingsdocumenten'
 import { Route as AuthenticatedNieuweSchadeRouteImport } from './routes/_authenticated/nieuwe-schade'
@@ -29,6 +30,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const KlantTokenRoute = KlantTokenRouteImport.update({
+  id: '/klant/$token',
+  path: '/klant/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSchadeberekeningRoute =
   AuthenticatedSchadeberekeningRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
   '/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
   '/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
+  '/klant/$token': typeof KlantTokenRoute
   '/dossiers/$id': typeof AuthenticatedDossiersIdRoute
 }
 export interface FileRoutesByTo {
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
   '/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
   '/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
+  '/klant/$token': typeof KlantTokenRoute
   '/': typeof AuthenticatedIndexRoute
   '/dossiers/$id': typeof AuthenticatedDossiersIdRoute
 }
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_authenticated/nieuwe-schade': typeof AuthenticatedNieuweSchadeRoute
   '/_authenticated/regelingsdocumenten': typeof AuthenticatedRegelingsdocumentenRoute
   '/_authenticated/schadeberekening': typeof AuthenticatedSchadeberekeningRoute
+  '/klant/$token': typeof KlantTokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/dossiers/$id': typeof AuthenticatedDossiersIdRoute
 }
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/nieuwe-schade'
     | '/regelingsdocumenten'
     | '/schadeberekening'
+    | '/klant/$token'
     | '/dossiers/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/nieuwe-schade'
     | '/regelingsdocumenten'
     | '/schadeberekening'
+    | '/klant/$token'
     | '/'
     | '/dossiers/$id'
   id:
@@ -157,12 +168,14 @@ export interface FileRouteTypes {
     | '/_authenticated/nieuwe-schade'
     | '/_authenticated/regelingsdocumenten'
     | '/_authenticated/schadeberekening'
+    | '/klant/$token'
     | '/_authenticated/'
     | '/_authenticated/dossiers/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  KlantTokenRoute: typeof KlantTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/klant/$token': {
+      id: '/klant/$token'
+      path: '/klant/$token'
+      fullPath: '/klant/$token'
+      preLoaderRoute: typeof KlantTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/schadeberekening': {
       id: '/_authenticated/schadeberekening'
@@ -290,6 +310,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  KlantTokenRoute: KlantTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
