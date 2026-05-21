@@ -249,6 +249,12 @@ function Step2({ dossierId }: { dossierId: string }) {
       return data;
     },
   });
+
+  // Glasbraak-dossiers krijgen de gespecialiseerde calculator i.p.v. de generieke schadelijnen-UI
+  if (dossierQ.data?.schade_type === "glasbraak") {
+    return <GlasbraakCalculator dossierId={dossierId} />;
+  }
+
   const abexQ = useQuery({
     queryKey: ["abex", "active"],
     queryFn: async () => {
