@@ -204,8 +204,12 @@ function Step1({ dossierId }: { dossierId?: string }) {
             <textarea rows={4} className={inputCls} value={form.schade_omschrijving} onChange={(e) => setForm({ ...form, schade_omschrijving: e.target.value })} />
           </Field>
         </div>
-        <div className="col-span-2 flex items-center justify-between mt-2">
-          {mutation.error && <span className="text-[12px] text-status-red-fg">{(mutation.error as Error).message}</span>}
+        {mutation.error && (
+          <div className="col-span-2 rounded-md border-[0.5px] border-status-red-fg/40 bg-status-red-bg text-status-red-fg px-3 py-2 text-[12px]">
+            {formatSupabaseError(mutation.error)}
+          </div>
+        )}
+        <div className="col-span-2 flex items-center justify-end mt-2">
           <div className="ml-auto flex items-center gap-2">
             <PrimaryButton type="submit">
               <IconDeviceFloppy size={14} />
