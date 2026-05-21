@@ -53,7 +53,15 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const session = useSession();
   const roleLabel = session.role === "admin" ? "Administrator" : "Schadebeheerder";
+  const { available: precedentenAvailable } = usePrecedentenAvailable();
 
+  const dynamicSections: NavSection[] = precedentenAvailable
+    ? sections.map((s) =>
+        s.label === "Tools"
+          ? { ...s, items: [...s.items, { to: "/precedenten", label: "Precedenten", icon: IconHistory }] }
+          : s,
+      )
+    : sections;
 
   return (
     <aside className="w-[220px] flex-shrink-0 bg-card border-r-[0.5px] border-border flex flex-col">
