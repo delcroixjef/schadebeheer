@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, type DragEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -194,7 +194,7 @@ function BestekanalysePage() {
     if (f) uploadMutation.mutate(f);
   }
 
-  function onDrop(e: React.DragEvent<HTMLButtonElement>) {
+  function onDrop(e: DragEvent<HTMLButtonElement>) {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
