@@ -196,7 +196,8 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
         <Card>
           <SectionHeading>Dossiergegevens</SectionHeading>
           <div className="space-y-3">
-            <ReadonlyField label="Dossiernummer" value={dossier.dossiernummer} />
+            <ReadonlyField label="WelZeker dossiernr" value={dossier.dossiernummer} />
+            <ReadonlyField label="Maatschappij dossiernr" value={(dossier as any).maatschappij_dossiernr ?? "—"} />
             <ReadonlyField label="Polisnummer" value={dossier.polis_nummer ?? "—"} />
             <ReadonlyField label="Schadedatum" value={dossier.schade_datum ? formatDate(dossier.schade_datum) : "—"} />
             <ReadonlyField label="Verzekeraar" value={verzekeraarMeta?.name ?? "—"} />
