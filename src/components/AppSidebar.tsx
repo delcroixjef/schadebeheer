@@ -88,14 +88,6 @@ export function AppSidebar() {
           <div className="text-[12px] font-medium text-foreground truncate">{displayName}</div>
           <div className="text-[11px] text-text-muted">Schadebeheerder</div>
         </div>
-        <button
-          onClick={() => void signOut()}
-          className="text-text-muted hover:text-foreground transition-colors"
-          title="Afmelden"
-          aria-label="Afmelden"
-        >
-          <IconLogout size={16} />
-        </button>
       </div>
     </aside>
   );
