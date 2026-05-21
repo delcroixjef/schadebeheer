@@ -303,7 +303,10 @@ export function Step5Regeling({ dossierId }: { dossierId: string }) {
               </div>
             </div>
             <div style={{ fontSize: 10, color: "#6b7280", textAlign: "right" }}>
-              <div>Dossier {dossier.dossiernummer}</div>
+              <div>WelZeker {dossier.dossiernummer}</div>
+              {(dossier as any).maatschappij_dossiernr && (
+                <div>Mij. {(dossier as any).maatschappij_dossiernr}</div>
+              )}
               <div>{formatDate(new Date())}</div>
             </div>
           </div>
