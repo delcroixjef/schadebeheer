@@ -56,7 +56,8 @@ function fileToBase64(file: File) {
 function BestekanalysePage() {
   const qc = useQueryClient();
   const session = useSession();
-  const [dossierId, setDossierId] = useState<string>("");
+  const { dossier: preselectedDossier } = Route.useSearch();
+  const [dossierId, setDossierId] = useState<string>(preselectedDossier ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [uploadedAt, setUploadedAt] = useState<Date | null>(null);
