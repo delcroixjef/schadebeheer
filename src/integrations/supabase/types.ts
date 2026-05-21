@@ -313,6 +313,9 @@ export type Database = {
         Row: {
           afwijking_percentage: number | null
           ai_oordeel: Database["public"]["Enums"]["ai_oordeel"]
+          beheerder_oordeel: string | null
+          beheerder_oordeel_door: string | null
+          beheerder_oordeel_op: string | null
           created_at: string
           dossier_id: string
           eenheid: string | null
@@ -327,6 +330,9 @@ export type Database = {
         Insert: {
           afwijking_percentage?: number | null
           ai_oordeel?: Database["public"]["Enums"]["ai_oordeel"]
+          beheerder_oordeel?: string | null
+          beheerder_oordeel_door?: string | null
+          beheerder_oordeel_op?: string | null
           created_at?: string
           dossier_id: string
           eenheid?: string | null
@@ -341,6 +347,9 @@ export type Database = {
         Update: {
           afwijking_percentage?: number | null
           ai_oordeel?: Database["public"]["Enums"]["ai_oordeel"]
+          beheerder_oordeel?: string | null
+          beheerder_oordeel_door?: string | null
+          beheerder_oordeel_op?: string | null
           created_at?: string
           dossier_id?: string
           eenheid?: string | null
