@@ -428,6 +428,7 @@ function Step2({ dossierId }: { dossierId: string }) {
           dossierId={dossierId}
           abexActueel={abexActueel}
           abexBasis={abexBasis}
+          schadeType={(dossierQ.data?.schade_type as string | null) ?? null}
           onLijnenExtracted={(extracted) => {
             setLijnen((ls) => [
               ...ls,
