@@ -45,19 +45,27 @@ export type BestekExtractResult = {
   samenvatting: string;
 };
 
-const SYSTEM = (abex: number) => `Je bent een schade-expert voor Belgische brandverzekeringen.
+const SYSTEM = (abex: number, schadeType: string | null | undefined) => {
+  const voorkeur = defaultCatalogiVoorSchadeType(schadeType);
+  return `Je bent een schade-expert voor Belgische brandverzekeringen.
 
-OPDRACHT: Extraheer ALLE individuele posten/lijnen uit de bijgevoegde bestekken (één of meerdere). Voor elke lijn geef je: omschrijving, hoeveelheid, eenheid (m², m, stuk, …), eenheidsprijs (excl. BTW, zoals in het bestek staat).
+${CATALOGUS_AI_HINTS}
 
-VERVOLGENS vergelijk je elke lijn met de meegegeven referentieprijzen-catalogus:
-- Zoek de best passende post (semantische match op omschrijving + eenheid).
-- Corrigeer de catalogus-basisprijs naar ABEX-index ${abex}: referentie_prijs = basisprijs × (${abex} / abex_basisindex). Als geen abex_basisindex aanwezig is, gebruik basisprijs ongewijzigd.
-- Indien maximale_basisprijs aanwezig: maximum_prijs = maximale_basisprijs × (${abex} / abex_basisindex) (of ongewijzigd).
-- Indien GEEN match in de catalogus: referentie_prijs = null, maximum_prijs = null, afwijking_pct = null, oordeel = "geen_referentie". NIETS verzinnen.
-- Match wel: oordeel = conform (<10% afwijking), licht_verhoogd (10–25%), niet_conform (>25% of boven maximum_prijs).
+SCHADETYPE: ${schadeType ?? "onbekend"}. Voorkeur-catalogi om eerst in te zoeken: ${voorkeur.join(", ")}.
+
+OPDRACHT: Extraheer ALLE individuele posten/lijnen uit de bijgevoegde bestekken (één of meerdere). Voor elke lijn: omschrijving, hoeveelheid, eenheid, eenheidsprijs (excl. BTW).
+
+VERGELIJK elke lijn met de meegegeven actieve referentieprijzen-catalogi:
+- Semantische match op omschrijving + eenheid + catalogus_type.
+- Corrigeer naar ABEX ${abex}: referentie_prijs = basisprijs × (${abex} / abex_basisindex). Geen abex_basisindex → ongewijzigd.
+- maximale_basisprijs aanwezig → maximum_prijs idem corrigeren. Boven maximum = "niet_conform".
+- Geen match → referentie_prijs/maximum_prijs/afwijking_pct = null, oordeel = "geen_referentie". NIETS verzinnen.
+- Wel match: conform (<10%), licht_verhoogd (10–25%), niet_conform (>25% of boven maximum).
+- Vermeld bron_catalogus (catalogus_label) en bron_categorie indien beschikbaar.
 
 Antwoord uitsluitend in JSON:
-{ "lijnen": [{"omschrijving": string, "hoeveelheid": number, "eenheid": string, "eenheidsprijs_excl_abex": number, "referentie_prijs": number|null, "maximum_prijs": number|null, "afwijking_pct": number|null, "oordeel": "conform"|"licht_verhoogd"|"niet_conform"|"geen_referentie"}], "samenvatting": string }`;
+{ "lijnen": [{"omschrijving": string, "hoeveelheid": number, "eenheid": string, "eenheidsprijs_excl_abex": number, "referentie_prijs": number|null, "maximum_prijs": number|null, "afwijking_pct": number|null, "oordeel": "conform"|"licht_verhoogd"|"niet_conform"|"geen_referentie", "bron_catalogus": string|null, "bron_categorie": string|null}], "samenvatting": string }`;
+};
 
 export const extractBestekLijnen = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => inputSchema.parse(input))
