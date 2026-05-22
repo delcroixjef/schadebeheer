@@ -243,11 +243,29 @@ function RegelingDetail({
               <div>{afgekeurd.length} afgekeurd</div>
               <div>{onbeoordeeld.length} nog te beoordelen</div>
             </div>
-            {blocked && (
+            {missingDecisions && (
               <div className="mt-3 text-[11px] text-[#7A4D0D] bg-[#FDF1DA] border-[0.5px] border-[#BA7517] rounded-md p-2">
                 Er zijn nog {onbeoordeeld.length} lijn(en) zonder beslissing.{" "}
                 <Link to="/bestekanalyse" search={{ dossier: dossier.id }} className="underline">Terug naar bestekanalyse</Link>
               </div>
+            )}
+          </Card>
+          <Card>
+            <div className="text-[14px] font-medium text-foreground mb-2">Te crediteren rekening</div>
+            <label className="text-[12px] text-text-secondary mb-1 block">IBAN van de klant</label>
+            <input
+              type="text"
+              value={iban}
+              onChange={(e) => setIban(e.target.value)}
+              placeholder="BE68 5390 0754 7034"
+              maxLength={42}
+              className="w-full px-2 py-1.5 text-[13px] rounded-md border-[0.5px] border-border bg-background font-mono tracking-wide"
+            />
+            {iban && !ibanValid && (
+              <div className="mt-2 text-[11px] text-[#7A1F1F]">Ongeldig IBAN-formaat.</div>
+            )}
+            {ibanValid && (
+              <div className="mt-2 text-[11px] text-text-muted">{ibanFormatted}</div>
             )}
           </Card>
         </div>
