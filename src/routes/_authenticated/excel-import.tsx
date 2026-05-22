@@ -564,6 +564,7 @@ function ExcelImportPage() {
     setErrorBanner(null);
     let batchId: string | null = null;
     try {
+      const catLabel = catalogusLabel(catalogusType);
       // 1. Create a pending batch
       const { data: batch, error: batchErr } = await supabase
         .from("import_batches")
@@ -575,6 +576,8 @@ function ExcelImportPage() {
           status: "pending",
           aangemaakt_door: session.userId,
           aangemaakt_door_naam: session.displayName,
+          catalogus_type: catalogusType,
+          catalogus_label: catLabel,
         })
         .select("id")
         .single();
@@ -595,6 +598,8 @@ function ExcelImportPage() {
         geldig_van: geldigVan,
         bron_bestand: filename,
         batch_id: batchId,
+        catalogus_type: catalogusType,
+        catalogus_label: catLabel,
       }));
 
       const chunkSize = 500;
@@ -605,11 +610,12 @@ function ExcelImportPage() {
         if (error) throw error;
       }
 
-      // 3. Deactivate previous active batch, then activate this one.
+      // 3. Deactivate only previous active batch of SAME verzekeraar + catalogus_type
       await supabase
         .from("import_batches")
         .update({ status: "superseded" })
         .eq("verzekeraar", verzekeraar)
+        .eq("catalogus_type", catalogusType)
         .eq("status", "active");
 
       const { error: actErr } = await supabase
