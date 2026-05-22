@@ -180,6 +180,8 @@ export type Database = {
           aangemaakt_op: string
           abex_basisindex: number | null
           bron_bestand: string
+          catalogus_label: string | null
+          catalogus_type: string
           created_at: string
           geldig_van: string | null
           id: string
@@ -192,6 +194,8 @@ export type Database = {
           aangemaakt_op?: string
           abex_basisindex?: number | null
           bron_bestand: string
+          catalogus_label?: string | null
+          catalogus_type?: string
           created_at?: string
           geldig_van?: string | null
           id?: string
@@ -204,6 +208,8 @@ export type Database = {
           aangemaakt_op?: string
           abex_basisindex?: number | null
           bron_bestand?: string
+          catalogus_label?: string | null
+          catalogus_type?: string
           created_at?: string
           geldig_van?: string | null
           id?: string
@@ -262,6 +268,8 @@ export type Database = {
           basisprijs: number
           batch_id: string | null
           bron_bestand: string | null
+          catalogus_label: string | null
+          catalogus_type: string
           categorie: string | null
           categorie_text: string | null
           code: string | null
@@ -279,6 +287,8 @@ export type Database = {
           basisprijs?: number
           batch_id?: string | null
           bron_bestand?: string | null
+          catalogus_label?: string | null
+          catalogus_type?: string
           categorie?: string | null
           categorie_text?: string | null
           code?: string | null
@@ -296,6 +306,8 @@ export type Database = {
           basisprijs?: number
           batch_id?: string | null
           bron_bestand?: string | null
+          catalogus_label?: string | null
+          catalogus_type?: string
           categorie?: string | null
           categorie_text?: string | null
           code?: string | null
