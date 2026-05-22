@@ -607,11 +607,13 @@ function BestekDropCard({
   dossierId,
   abexActueel,
   abexBasis,
+  schadeType,
   onLijnenExtracted,
 }: {
   dossierId: string;
   abexActueel: number;
   abexBasis: number;
+  schadeType: string | null;
   onLijnenExtracted: (rows: ExtractedRow[]) => void;
 }) {
   const session = useSession();
@@ -623,14 +625,30 @@ function BestekDropCard({
   const [lastResult, setLastResult] = useState<{ count: number; samenvatting: string } | null>(null);
 
   const { data: refprijzen = [] } = useQuery({
-    queryKey: ["referentieprijzen-extract"],
+    queryKey: ["referentieprijzen-actief-extract"],
     queryFn: async () => {
+      const { data: batches, error: bErr } = await supabase
+        .from("import_batches")
+        .select("id,catalogus_type,catalogus_label,bron_bestand")
+        .eq("status", "active");
+      if (bErr) throw bErr;
+      if (!batches || batches.length === 0) return [];
+      const batchMap = new Map(batches.map((b) => [b.id as string, b]));
       const { data, error } = await supabase
         .from("referentieprijzen")
-        .select("omschrijving,eenheid,basisprijs,maximale_basisprijs,abex_basisindex")
-        .limit(2000);
+        .select("omschrijving,eenheid,basisprijs,maximale_basisprijs,abex_basisindex,categorie,catalogus_type,catalogus_label,bron_bestand,batch_id")
+        .in("batch_id", Array.from(batchMap.keys()))
+        .limit(5000);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((r) => {
+        const b = batchMap.get(r.batch_id as string);
+        return {
+          ...r,
+          catalogus_type: r.catalogus_type ?? b?.catalogus_type ?? "algemeen",
+          catalogus_label: r.catalogus_label ?? b?.catalogus_label ?? null,
+          bron_bestand: r.bron_bestand ?? b?.bron_bestand ?? null,
+        };
+      });
     },
   });
 
@@ -650,12 +668,17 @@ function BestekDropCard({
         data: {
           files: payload,
           abexActueel,
-          referentieprijzen: (refprijzen as Array<{ omschrijving: string; eenheid: string | null; basisprijs: number; maximale_basisprijs: number | null; abex_basisindex: number | null }>).map((r) => ({
+          schadeType,
+          referentieprijzen: refprijzen.map((r) => ({
             omschrijving: r.omschrijving,
             eenheid: r.eenheid,
             basisprijs: Number(r.basisprijs),
             maximale_basisprijs: r.maximale_basisprijs != null ? Number(r.maximale_basisprijs) : null,
             abex_basisindex: r.abex_basisindex != null ? Number(r.abex_basisindex) : null,
+            categorie: r.categorie ?? null,
+            catalogus_type: r.catalogus_type ?? "algemeen",
+            catalogus_label: r.catalogus_label ?? null,
+            bron_bestand: r.bron_bestand ?? null,
           })),
         },
       });
