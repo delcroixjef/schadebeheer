@@ -469,30 +469,33 @@ function RegelingDetail({
             </PdfSection>
           )}
 
-          <PdfSection title={`${afgekeurd.length > 0 ? "5" : "4"}. Akkoord & definitieve kwijting`}>
+          <PdfSection title={`${afgekeurd.length > 0 ? "5" : "4"}. Uitbetaling`}>
+            <PdfKV k="IBAN begunstigde" v={ibanFormatted || "—"} />
+            <PdfKV k="Op naam van" v={dossier.klant_naam} />
+            <PdfKV k="Te storten bedrag" v={formatEur(teVergoeden)} />
+          </PdfSection>
+
+          <PdfSection title={`${afgekeurd.length > 0 ? "6" : "5"}. Akkoord & definitieve kwijting`}>
             <p style={{ fontSize: 11 }}>
-              Ondergetekende partijen verklaren akkoord te gaan met bovenstaande minnelijke schaderegeling. De
+              Ondergetekende verklaart akkoord te gaan met bovenstaande minnelijke schaderegeling. De
               Begunstigde verklaart, door ondertekening van huidige overeenkomst en na ontvangst van het bedrag van{" "}
-              <strong>{formatEur(teVergoeden)}</strong>, volledig en definitief vergoed te zijn voor alle directe en
-              indirecte gevolgen van het hierboven omschreven schadegeval, en verleent algehele en definitieve kwijting.
+              <strong>{formatEur(teVergoeden)}</strong> op het hierboven vermelde IBAN-rekeningnummer, volledig en
+              definitief vergoed te zijn voor alle directe en indirecte gevolgen van het hierboven omschreven
+              schadegeval, en verleent algehele en definitieve kwijting.
             </p>
           </PdfSection>
 
-          {/* Signatures */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginTop: 28 }}>
-            {[
-              { name: dossier.klant_naam, role: "De Verzekerde" },
-              { name: session?.displayName ?? "WelZeker Schadebeheer", role: "Voor WelZeker" },
-            ].map((sig, i) => (
-              <div key={i}>
-                <div style={{ border: "1px dashed #9ca3af", borderRadius: 4, height: 70, marginBottom: 6 }} />
-                <div style={{ fontSize: 11, fontWeight: 500 }}>{sig.name}</div>
-                <div style={{ fontSize: 10, color: "#6b7280" }}>{sig.role}</div>
-                <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4 }}>
-                  Datum: ……………………………………
-                </div>
-              </div>
-            ))}
+          {/* Signature — only the client signs */}
+          <div style={{ marginTop: 28, maxWidth: 360 }}>
+            <div style={{ border: "1px dashed #9ca3af", borderRadius: 4, height: 80, marginBottom: 6 }} />
+            <div style={{ fontSize: 11, fontWeight: 500 }}>{dossier.klant_naam}</div>
+            <div style={{ fontSize: 10, color: "#6b7280" }}>De Verzekerde</div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4 }}>
+              Datum: ……………………………………
+            </div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4, fontStyle: "italic" }}>
+              Handgeschreven vermelding: "Gelezen en goedgekeurd"
+            </div>
           </div>
         </div>
       </div>
