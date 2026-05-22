@@ -97,14 +97,30 @@ function BestekanalysePage() {
 
 
   const { data: refprijzen = [] } = useQuery({
-    queryKey: ["referentieprijzen"],
+    queryKey: ["referentieprijzen-actief"],
     queryFn: async () => {
+      const { data: batches, error: bErr } = await supabase
+        .from("import_batches")
+        .select("id,catalogus_type,catalogus_label,bron_bestand,verzekeraar")
+        .eq("status", "active");
+      if (bErr) throw bErr;
+      if (!batches || batches.length === 0) return [];
+      const batchMap = new Map(batches.map((b) => [b.id as string, b]));
       const { data, error } = await supabase
         .from("referentieprijzen")
-        .select("omschrijving,eenheid,basisprijs,abex_basisindex")
-        .limit(2000);
+        .select("omschrijving,eenheid,basisprijs,maximale_basisprijs,abex_basisindex,categorie,catalogus_type,catalogus_label,bron_bestand,batch_id")
+        .in("batch_id", Array.from(batchMap.keys()))
+        .limit(5000);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((r) => {
+        const b = batchMap.get(r.batch_id as string);
+        return {
+          ...r,
+          catalogus_type: r.catalogus_type ?? b?.catalogus_type ?? "algemeen",
+          catalogus_label: r.catalogus_label ?? b?.catalogus_label ?? null,
+          bron_bestand: r.bron_bestand ?? b?.bron_bestand ?? null,
+        };
+      });
     },
   });
 
