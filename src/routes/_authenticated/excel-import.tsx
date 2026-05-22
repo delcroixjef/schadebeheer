@@ -1057,7 +1057,8 @@ function ExcelImportPage() {
         <SectionHeading>Recente imports</SectionHeading>
         {history.data && history.data.length > 0 ? (
           <div>
-            <div className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
+            <div className="grid grid-cols-[1fr_1.6fr_0.9fr_0.7fr_0.8fr_0.9fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
+              <span>Catalogus</span>
               <span>Bestand</span>
               <span>Verzekeraar</span>
               <span className="text-right">Prijsregels</span>
@@ -1068,8 +1069,11 @@ function ExcelImportPage() {
             {history.data.map((b) => (
               <div
                 key={b.id}
-                className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
+                className="grid grid-cols-[1fr_1.6fr_0.9fr_0.7fr_0.8fr_0.9fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
               >
+                <span className="text-text-secondary truncate" title={catalogusLabel((b as { catalogus_type?: string }).catalogus_type)}>
+                  {catalogusLabel((b as { catalogus_type?: string }).catalogus_type)}
+                </span>
                 <span className="truncate" title={b.bron_bestand ?? ""}>{b.bron_bestand ?? "—"}</span>
                 <span className="text-text-secondary">
                   {VERZEKERAARS[(b.verzekeraar as VerzekeraarKey) ?? "baloise"]?.name ?? String(b.verzekeraar ?? "—")}
