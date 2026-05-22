@@ -186,6 +186,7 @@ function BestekanalysePage() {
           fileBase64: b64,
           mimeType: getBestekMimeType(file),
           abexActueel: abex,
+          schadeType: dossier.schade_type ?? null,
           schadeLijnen: schadeLijnen.map((l) => ({
             omschrijving: l.omschrijving,
             hoeveelheid: Number(l.hoeveelheid),
