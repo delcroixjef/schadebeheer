@@ -126,6 +126,7 @@ function RegelingDetail({
   const session = useSession();
   const previewRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
+  const [iban, setIban] = useState("");
 
   const ins = dossier.verzekeraar ? VERZEKERAARS[dossier.verzekeraar as VerzekeraarKey] : null;
   const schadeType = SCHADE_TYPES.find((s) => s.value === dossier.schade_type)?.label ?? dossier.schade_type ?? "—";
@@ -139,7 +140,12 @@ function RegelingDetail({
   const vrijstelling = Number(dossier.vrijstelling_bedrag ?? 0);
   const teVergoeden = Math.max(0, totaalGoedgekeurd - vrijstelling);
 
-  const blocked = onbeoordeeld.length > 0;
+  const ibanCompact = iban.replace(/\s+/g, "").toUpperCase();
+  const ibanValid = /^[A-Z]{2}[0-9A-Z]{13,32}$/.test(ibanCompact);
+  const ibanFormatted = ibanCompact.replace(/(.{4})/g, "$1 ").trim();
+
+  const missingDecisions = onbeoordeeld.length > 0;
+  const blocked = missingDecisions || !ibanValid;
 
   async function generatePdf() {
     if (!previewRef.current || blocked) return;
@@ -180,6 +186,7 @@ function RegelingDetail({
           vrijstelling,
           te_vergoeden: teVergoeden,
           aantal_goedgekeurde_lijnen: goedgekeurd.length,
+          iban: ibanCompact,
           gegenereerd_op: new Date().toISOString(),
         } as never,
       });
@@ -236,11 +243,29 @@ function RegelingDetail({
               <div>{afgekeurd.length} afgekeurd</div>
               <div>{onbeoordeeld.length} nog te beoordelen</div>
             </div>
-            {blocked && (
+            {missingDecisions && (
               <div className="mt-3 text-[11px] text-[#7A4D0D] bg-[#FDF1DA] border-[0.5px] border-[#BA7517] rounded-md p-2">
                 Er zijn nog {onbeoordeeld.length} lijn(en) zonder beslissing.{" "}
                 <Link to="/bestekanalyse" search={{ dossier: dossier.id }} className="underline">Terug naar bestekanalyse</Link>
               </div>
+            )}
+          </Card>
+          <Card>
+            <div className="text-[14px] font-medium text-foreground mb-2">Te crediteren rekening</div>
+            <label className="text-[12px] text-text-secondary mb-1 block">IBAN van de klant</label>
+            <input
+              type="text"
+              value={iban}
+              onChange={(e) => setIban(e.target.value)}
+              placeholder="BE68 5390 0754 7034"
+              maxLength={42}
+              className="w-full px-2 py-1.5 text-[13px] rounded-md border-[0.5px] border-border bg-background font-mono tracking-wide"
+            />
+            {iban && !ibanValid && (
+              <div className="mt-2 text-[11px] text-[#7A1F1F]">Ongeldig IBAN-formaat.</div>
+            )}
+            {ibanValid && (
+              <div className="mt-2 text-[11px] text-text-muted">{ibanFormatted}</div>
             )}
           </Card>
         </div>
@@ -311,7 +336,9 @@ function RegelingDetail({
         <div className="mt-4 flex justify-end items-center gap-3">
           {blocked ? (
             <div className="text-[12px] text-[#7A4D0D] bg-[#FDF1DA] border-[0.5px] border-[#BA7517] rounded-md px-3 py-2">
-              Er zijn nog lijnen zonder beslissing. Beoordeel eerst alle lijnen vooraleer de regeling te genereren.
+              {missingDecisions
+                ? "Er zijn nog lijnen zonder beslissing. Beoordeel eerst alle lijnen vooraleer de regeling te genereren."
+                : "Vul een geldig IBAN in vooraleer de regeling te genereren."}
             </div>
           ) : (
             <PrimaryButton onClick={generatePdf} disabled={generating}>
@@ -442,30 +469,33 @@ function RegelingDetail({
             </PdfSection>
           )}
 
-          <PdfSection title={`${afgekeurd.length > 0 ? "5" : "4"}. Akkoord & definitieve kwijting`}>
+          <PdfSection title={`${afgekeurd.length > 0 ? "5" : "4"}. Uitbetaling`}>
+            <PdfKV k="IBAN begunstigde" v={ibanFormatted || "—"} />
+            <PdfKV k="Op naam van" v={dossier.klant_naam} />
+            <PdfKV k="Te storten bedrag" v={formatEur(teVergoeden)} />
+          </PdfSection>
+
+          <PdfSection title={`${afgekeurd.length > 0 ? "6" : "5"}. Akkoord & definitieve kwijting`}>
             <p style={{ fontSize: 11 }}>
-              Ondergetekende partijen verklaren akkoord te gaan met bovenstaande minnelijke schaderegeling. De
+              Ondergetekende verklaart akkoord te gaan met bovenstaande minnelijke schaderegeling. De
               Begunstigde verklaart, door ondertekening van huidige overeenkomst en na ontvangst van het bedrag van{" "}
-              <strong>{formatEur(teVergoeden)}</strong>, volledig en definitief vergoed te zijn voor alle directe en
-              indirecte gevolgen van het hierboven omschreven schadegeval, en verleent algehele en definitieve kwijting.
+              <strong>{formatEur(teVergoeden)}</strong> op het hierboven vermelde IBAN-rekeningnummer, volledig en
+              definitief vergoed te zijn voor alle directe en indirecte gevolgen van het hierboven omschreven
+              schadegeval, en verleent algehele en definitieve kwijting.
             </p>
           </PdfSection>
 
-          {/* Signatures */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginTop: 28 }}>
-            {[
-              { name: dossier.klant_naam, role: "De Verzekerde" },
-              { name: session?.displayName ?? "WelZeker Schadebeheer", role: "Voor WelZeker" },
-            ].map((sig, i) => (
-              <div key={i}>
-                <div style={{ border: "1px dashed #9ca3af", borderRadius: 4, height: 70, marginBottom: 6 }} />
-                <div style={{ fontSize: 11, fontWeight: 500 }}>{sig.name}</div>
-                <div style={{ fontSize: 10, color: "#6b7280" }}>{sig.role}</div>
-                <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4 }}>
-                  Datum: ……………………………………
-                </div>
-              </div>
-            ))}
+          {/* Signature — only the client signs */}
+          <div style={{ marginTop: 28, maxWidth: 360 }}>
+            <div style={{ border: "1px dashed #9ca3af", borderRadius: 4, height: 80, marginBottom: 6 }} />
+            <div style={{ fontSize: 11, fontWeight: 500 }}>{dossier.klant_naam}</div>
+            <div style={{ fontSize: 10, color: "#6b7280" }}>De Verzekerde</div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4 }}>
+              Datum: ……………………………………
+            </div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginTop: 4, fontStyle: "italic" }}>
+              Handgeschreven vermelding: "Gelezen en goedgekeurd"
+            </div>
           </div>
         </div>
       </div>
