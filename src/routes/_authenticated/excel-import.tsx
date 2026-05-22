@@ -533,6 +533,9 @@ function ExcelImportPage() {
       setAbexAutoDetected(detected);
       setAbexValue(detected ?? "");
       setAbexManual(false);
+      const cat = detectCatalogusType(file.name, parsed.map((p) => p.sheetName));
+      setCatalogusAutoDetected(cat);
+      setCatalogusType(cat === "algemeen" ? "algemene_schade" : cat);
     } catch (e) {
       toast.error("Kon het bestand niet lezen: " + (e as Error).message);
     } finally {
