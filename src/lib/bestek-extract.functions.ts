@@ -104,7 +104,7 @@ export const extractBestekLijnen = createServerFn({ method: "POST" })
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: SYSTEM(data.abexActueel) },
+          { role: "system", content: SYSTEM(data.abexActueel, data.schadeType) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
