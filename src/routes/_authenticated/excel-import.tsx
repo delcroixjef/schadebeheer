@@ -631,6 +631,8 @@ function ExcelImportPage() {
           batch_id: batchId,
           filename,
           verzekeraar,
+          catalogus_type: catalogusType,
+          catalogus_label: catalogusLabel(catalogusType),
           geldig_van: geldigVan,
           abex_basisindex: Number(abexValue),
           imported: inserts.length,
