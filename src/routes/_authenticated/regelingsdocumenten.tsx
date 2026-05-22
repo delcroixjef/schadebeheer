@@ -336,7 +336,9 @@ function RegelingDetail({
         <div className="mt-4 flex justify-end items-center gap-3">
           {blocked ? (
             <div className="text-[12px] text-[#7A4D0D] bg-[#FDF1DA] border-[0.5px] border-[#BA7517] rounded-md px-3 py-2">
-              Er zijn nog lijnen zonder beslissing. Beoordeel eerst alle lijnen vooraleer de regeling te genereren.
+              {missingDecisions
+                ? "Er zijn nog lijnen zonder beslissing. Beoordeel eerst alle lijnen vooraleer de regeling te genereren."
+                : "Vul een geldig IBAN in vooraleer de regeling te genereren."}
             </div>
           ) : (
             <PrimaryButton onClick={generatePdf} disabled={generating}>
