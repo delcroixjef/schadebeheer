@@ -849,6 +849,25 @@ function ExcelImportPage() {
                           ))}
                         </select>
                       </Field>
+                      <Field
+                        label={
+                          catalogusAutoDetected && catalogusAutoDetected !== "algemeen"
+                            ? `Catalogus (automatisch gedetecteerd: ${catalogusLabel(catalogusAutoDetected)})`
+                            : "Catalogus (niet automatisch herkend — kies type)"
+                        }
+                      >
+                        <select
+                          className="w-full px-3 py-2 text-[13px] bg-secondary rounded-md border-[0.5px] border-border"
+                          value={catalogusType}
+                          onChange={(e) => setCatalogusType(e.target.value as CatalogusType)}
+                        >
+                          {CATALOGUS_TYPES.filter((c) => c.value !== "algemeen" && c.value !== "glas").map((c) => (
+                            <option key={c.value} value={c.value}>
+                              {c.label} — {c.hint}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
                       <Field label="Geldig vanaf">
                         <input
                           type="date"
