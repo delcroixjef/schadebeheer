@@ -482,6 +482,8 @@ function ExcelImportPage() {
   const [abexManual, setAbexManual] = useState(false);
   const [verzekeraar, setVerzekeraar] = useState<VerzekeraarKey>("baloise");
   const [geldigVan, setGeldigVan] = useState(new Date().toISOString().slice(0, 10));
+  const [catalogusType, setCatalogusType] = useState<CatalogusType>("algemene_schade");
+  const [catalogusAutoDetected, setCatalogusAutoDetected] = useState<CatalogusType | null>(null);
   const [importing, setImporting] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
