@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { CATALOGUS_AI_HINTS, defaultCatalogiVoorSchadeType } from "@/lib/catalogus";
 
 const inputSchema = z.object({
   dossierId: z.string().uuid(),
   fileBase64: z.string().min(10),
   mimeType: z.string().min(3),
   abexActueel: z.number().int().positive(),
+  schadeType: z.string().nullable().optional(),
   schadeLijnen: z.array(
     z.object({
       omschrijving: z.string(),
@@ -19,7 +21,12 @@ const inputSchema = z.object({
       omschrijving: z.string(),
       eenheid: z.string().nullable().optional(),
       basisprijs: z.number(),
+      maximale_basisprijs: z.number().nullable().optional(),
       abex_basisindex: z.number().nullable().optional(),
+      categorie: z.string().nullable().optional(),
+      catalogus_type: z.string().nullable().optional(),
+      catalogus_label: z.string().nullable().optional(),
+      bron_bestand: z.string().nullable().optional(),
     })
   ),
 });
@@ -28,8 +35,11 @@ export type BestekLijn = {
   omschrijving: string;
   bestek_prijs: number;
   referentie_prijs: number | null;
+  maximum_prijs?: number | null;
   afwijking_pct: number | null;
   oordeel: "conform" | "licht_verhoogd" | "niet_conform" | "geen_referentie";
+  bron_catalogus?: string | null;
+  bron_categorie?: string | null;
 };
 
 export type BestekAnalyseResult = {
@@ -39,20 +49,28 @@ export type BestekAnalyseResult = {
   verdacht_label: string | null;
 };
 
-const SYSTEM_PROMPT = (abex: number) =>
-  `Je bent een schade-expert voor Belgische brandverzekeringen.
+const SYSTEM_PROMPT = (abex: number, schadeType: string | null | undefined) => {
+  const voorkeur = defaultCatalogiVoorSchadeType(schadeType);
+  return `Je bent een schade-expert voor Belgische brandverzekeringen.
+
+${CATALOGUS_AI_HINTS}
+
+SCHADETYPE: ${schadeType ?? "onbekend"}. Begin met te zoeken in deze catalogi (voorkeur): ${voorkeur.join(", ")}. Val terug op andere actieve catalogi indien geen match.
 
 STRIKTE REGELS — VERPLICHT:
-1. Extraheer ELKE individuele lijn (post) uit het bijgevoegde bestek van de klant met exacte omschrijving en eenheidsprijs.
-2. Voor de vergelijking gebruik je UITSLUITEND de meegegeven referentieprijzen-catalogus. Je MAG GEEN referentieprijzen verzinnen of inschatten op basis van eigen kennis.
-3. Voor elke besteklijn zoek je de best passende post in de catalogus (semantische match op omschrijving). De catalogus-basisprijs corrigeer je naar ABEX-index ${abex} via: referentie_prijs = basisprijs × (${abex} / abex_basisindex_catalogus). Als de catalogus geen abex_basisindex meegeeft, gebruik je basisprijs ongewijzigd.
-4. Indien GEEN redelijke match in de catalogus bestaat: referentie_prijs = null, afwijking_pct = null, oordeel = "geen_referentie". NIET verzinnen.
-5. Indien wel match: oordeel = conform (<10%), licht_verhoogd (10–25%), niet_conform (>25%).
-6. Score 0–100 = % conforme + match-dekkings-ratio. "geen_referentie" lijnen tellen NIET als niet-conform maar verlagen wel de dekking.
-7. Aanbeveling in NL, max 3 zinnen, feitelijk over prijsafwijkingen — GEEN algemene uitspraken over de aannemer als er geen prijsdata is.
+1. Extraheer ELKE individuele lijn uit het bijgevoegde klantbestek met exacte omschrijving en eenheidsprijs.
+2. Voor de vergelijking gebruik je UITSLUITEND de meegegeven referentieprijzen-catalogus. Verzin nooit een referentieprijs.
+3. Voor elke besteklijn zoek je de best passende post (semantische match op omschrijving + eenheid + catalogus_type). Corrigeer naar ABEX-index ${abex}: referentie_prijs = basisprijs × (${abex} / abex_basisindex). Geen abex_basisindex → basisprijs ongewijzigd.
+4. Als de catalogus een maximale_basisprijs heeft: maximum_prijs = maximale_basisprijs × (${abex} / abex_basisindex). Boven dit maximum = automatisch "niet_conform".
+5. Geen redelijke match → referentie_prijs = null, maximum_prijs = null, afwijking_pct = null, oordeel = "geen_referentie". NIET verzinnen.
+6. Wel match: conform (<10%), licht_verhoogd (10–25%), niet_conform (>25% OF boven maximum_prijs).
+7. Vermeld in bron_catalogus de catalogus_label (bv. "Stormschade") en in bron_categorie de categorie indien aanwezig (bv. "Zinken dakgoot").
+8. Score 0–100 = % conforme + match-dekkings-ratio.
+9. Aanbeveling in NL, max 3 zinnen, feitelijk en verwijzend naar bron (bv. "vergeleken met Stormschade > Dakgoten").
 
 Antwoord uitsluitend in JSON:
-{ "score": number, "lijnen": [{"omschrijving": string, "bestek_prijs": number, "referentie_prijs": number|null, "afwijking_pct": number|null, "oordeel": "conform"|"licht_verhoogd"|"niet_conform"|"geen_referentie"}], "aanbeveling": string, "verdacht_label": string|null }`;
+{ "score": number, "lijnen": [{"omschrijving": string, "bestek_prijs": number, "referentie_prijs": number|null, "maximum_prijs": number|null, "afwijking_pct": number|null, "oordeel": "conform"|"licht_verhoogd"|"niet_conform"|"geen_referentie", "bron_catalogus": string|null, "bron_categorie": string|null}], "aanbeveling": string, "verdacht_label": string|null }`;
+};
 
 export const analyseBestek = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => inputSchema.parse(input))
@@ -67,7 +85,7 @@ export const analyseBestek = createServerFn({ method: "POST" })
           data.schadeLijnen,
           null,
           2
-        )}\n\nReferentieprijzen catalogus (basisprijs is op ABEX-basisindex; corrigeer naar ${data.abexActueel}):\n${JSON.stringify(
+        )}\n\nReferentieprijzen catalogus (actieve catalogi, met catalogus_type/label/bron_bestand/categorie; basisprijs op abex_basisindex; corrigeer naar ${data.abexActueel}):\n${JSON.stringify(
           data.referentieprijzen,
           null,
           2
@@ -99,7 +117,7 @@ export const analyseBestek = createServerFn({ method: "POST" })
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT(data.abexActueel) },
+          { role: "system", content: SYSTEM_PROMPT(data.abexActueel, data.schadeType) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },

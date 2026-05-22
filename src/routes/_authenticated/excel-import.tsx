@@ -10,6 +10,7 @@ import { VERZEKERAARS, VERZEKERAAR_KEYS, type VerzekeraarKey } from "@/lib/insur
 import { formatDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { formatSupabaseError } from "@/lib/supabase-error";
+import { CATALOGUS_TYPES, catalogusLabel, detectCatalogusType, type CatalogusType } from "@/lib/catalogus";
 
 export const Route = createFileRoute("/_authenticated/excel-import")({
   component: ExcelImportPage,
@@ -481,6 +482,8 @@ function ExcelImportPage() {
   const [abexManual, setAbexManual] = useState(false);
   const [verzekeraar, setVerzekeraar] = useState<VerzekeraarKey>("baloise");
   const [geldigVan, setGeldigVan] = useState(new Date().toISOString().slice(0, 10));
+  const [catalogusType, setCatalogusType] = useState<CatalogusType>("algemene_schade");
+  const [catalogusAutoDetected, setCatalogusAutoDetected] = useState<CatalogusType | null>(null);
   const [importing, setImporting] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
@@ -530,6 +533,9 @@ function ExcelImportPage() {
       setAbexAutoDetected(detected);
       setAbexValue(detected ?? "");
       setAbexManual(false);
+      const cat = detectCatalogusType(file.name, parsed.map((p) => p.sheetName));
+      setCatalogusAutoDetected(cat);
+      setCatalogusType(cat === "algemeen" ? "algemene_schade" : cat);
     } catch (e) {
       toast.error("Kon het bestand niet lezen: " + (e as Error).message);
     } finally {
@@ -558,6 +564,7 @@ function ExcelImportPage() {
     setErrorBanner(null);
     let batchId: string | null = null;
     try {
+      const catLabel = catalogusLabel(catalogusType);
       // 1. Create a pending batch
       const { data: batch, error: batchErr } = await supabase
         .from("import_batches")
@@ -569,6 +576,8 @@ function ExcelImportPage() {
           status: "pending",
           aangemaakt_door: session.userId,
           aangemaakt_door_naam: session.displayName,
+          catalogus_type: catalogusType,
+          catalogus_label: catLabel,
         })
         .select("id")
         .single();
@@ -589,6 +598,8 @@ function ExcelImportPage() {
         geldig_van: geldigVan,
         bron_bestand: filename,
         batch_id: batchId,
+        catalogus_type: catalogusType,
+        catalogus_label: catLabel,
       }));
 
       const chunkSize = 500;
@@ -599,11 +610,12 @@ function ExcelImportPage() {
         if (error) throw error;
       }
 
-      // 3. Deactivate previous active batch, then activate this one.
+      // 3. Deactivate only previous active batch of SAME verzekeraar + catalogus_type
       await supabase
         .from("import_batches")
         .update({ status: "superseded" })
         .eq("verzekeraar", verzekeraar)
+        .eq("catalogus_type", catalogusType)
         .eq("status", "active");
 
       const { error: actErr } = await supabase
@@ -619,6 +631,8 @@ function ExcelImportPage() {
           batch_id: batchId,
           filename,
           verzekeraar,
+          catalogus_type: catalogusType,
+          catalogus_label: catalogusLabel(catalogusType),
           geldig_van: geldigVan,
           abex_basisindex: Number(abexValue),
           imported: inserts.length,
@@ -835,6 +849,25 @@ function ExcelImportPage() {
                           ))}
                         </select>
                       </Field>
+                      <Field
+                        label={
+                          catalogusAutoDetected && catalogusAutoDetected !== "algemeen"
+                            ? `Catalogus (automatisch gedetecteerd: ${catalogusLabel(catalogusAutoDetected)})`
+                            : "Catalogus (niet automatisch herkend — kies type)"
+                        }
+                      >
+                        <select
+                          className="w-full px-3 py-2 text-[13px] bg-secondary rounded-md border-[0.5px] border-border"
+                          value={catalogusType}
+                          onChange={(e) => setCatalogusType(e.target.value as CatalogusType)}
+                        >
+                          {CATALOGUS_TYPES.filter((c) => c.value !== "algemeen" && c.value !== "glas").map((c) => (
+                            <option key={c.value} value={c.value}>
+                              {c.label} — {c.hint}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
                       <Field label="Geldig vanaf">
                         <input
                           type="date"
@@ -1024,7 +1057,8 @@ function ExcelImportPage() {
         <SectionHeading>Recente imports</SectionHeading>
         {history.data && history.data.length > 0 ? (
           <div>
-            <div className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
+            <div className="grid grid-cols-[1fr_1.6fr_0.9fr_0.7fr_0.8fr_0.9fr_1fr] gap-2 px-3 py-2 bg-secondary rounded-md text-[11px] font-medium text-text-secondary uppercase tracking-[0.5px] mb-1">
+              <span>Catalogus</span>
               <span>Bestand</span>
               <span>Verzekeraar</span>
               <span className="text-right">Prijsregels</span>
@@ -1035,8 +1069,11 @@ function ExcelImportPage() {
             {history.data.map((b) => (
               <div
                 key={b.id}
-                className="grid grid-cols-[2fr_1fr_0.8fr_0.9fr_1fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
+                className="grid grid-cols-[1fr_1.6fr_0.9fr_0.7fr_0.8fr_0.9fr_1fr] gap-2 px-3 py-2.5 text-[13px] border-b-[0.5px] border-border items-center"
               >
+                <span className="text-text-secondary truncate" title={catalogusLabel((b as { catalogus_type?: string }).catalogus_type)}>
+                  {catalogusLabel((b as { catalogus_type?: string }).catalogus_type)}
+                </span>
                 <span className="truncate" title={b.bron_bestand ?? ""}>{b.bron_bestand ?? "—"}</span>
                 <span className="text-text-secondary">
                   {VERZEKERAARS[(b.verzekeraar as VerzekeraarKey) ?? "baloise"]?.name ?? String(b.verzekeraar ?? "—")}
