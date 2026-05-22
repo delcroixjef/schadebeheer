@@ -126,6 +126,7 @@ function RegelingDetail({
   const session = useSession();
   const previewRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
+  const [iban, setIban] = useState("");
 
   const ins = dossier.verzekeraar ? VERZEKERAARS[dossier.verzekeraar as VerzekeraarKey] : null;
   const schadeType = SCHADE_TYPES.find((s) => s.value === dossier.schade_type)?.label ?? dossier.schade_type ?? "—";
@@ -139,7 +140,12 @@ function RegelingDetail({
   const vrijstelling = Number(dossier.vrijstelling_bedrag ?? 0);
   const teVergoeden = Math.max(0, totaalGoedgekeurd - vrijstelling);
 
-  const blocked = onbeoordeeld.length > 0;
+  const ibanCompact = iban.replace(/\s+/g, "").toUpperCase();
+  const ibanValid = /^[A-Z]{2}[0-9A-Z]{13,32}$/.test(ibanCompact);
+  const ibanFormatted = ibanCompact.replace(/(.{4})/g, "$1 ").trim();
+
+  const missingDecisions = onbeoordeeld.length > 0;
+  const blocked = missingDecisions || !ibanValid;
 
   async function generatePdf() {
     if (!previewRef.current || blocked) return;
