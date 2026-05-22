@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { CATALOGUS_AI_HINTS, defaultCatalogiVoorSchadeType } from "@/lib/catalogus";
 
 const fileSchema = z.object({
   filename: z.string(),
