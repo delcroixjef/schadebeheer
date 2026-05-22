@@ -196,7 +196,12 @@ function BestekanalysePage() {
             omschrijving: r.omschrijving,
             eenheid: r.eenheid,
             basisprijs: Number(r.basisprijs),
+            maximale_basisprijs: r.maximale_basisprijs != null ? Number(r.maximale_basisprijs) : null,
             abex_basisindex: r.abex_basisindex != null ? Number(r.abex_basisindex) : null,
+            categorie: r.categorie ?? null,
+            catalogus_type: r.catalogus_type ?? "algemeen",
+            catalogus_label: r.catalogus_label ?? null,
+            bron_bestand: r.bron_bestand ?? null,
           })),
         },
       });
