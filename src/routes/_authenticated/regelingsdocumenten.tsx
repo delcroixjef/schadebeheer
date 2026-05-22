@@ -186,6 +186,7 @@ function RegelingDetail({
           vrijstelling,
           te_vergoeden: teVergoeden,
           aantal_goedgekeurde_lijnen: goedgekeurd.length,
+          iban: ibanCompact,
           gegenereerd_op: new Date().toISOString(),
         } as never,
       });
