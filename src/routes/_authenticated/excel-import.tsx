@@ -10,6 +10,7 @@ import { VERZEKERAARS, VERZEKERAAR_KEYS, type VerzekeraarKey } from "@/lib/insur
 import { formatDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { formatSupabaseError } from "@/lib/supabase-error";
+import { CATALOGUS_TYPES, catalogusLabel, detectCatalogusType, type CatalogusType } from "@/lib/catalogus";
 
 export const Route = createFileRoute("/_authenticated/excel-import")({
   component: ExcelImportPage,
