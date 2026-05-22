@@ -72,7 +72,7 @@ function BestekanalysePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dossiers")
-        .select("id,dossiernummer,klant_naam,abex_index_gebruikt,ai_score,ai_aanbeveling,ai_verdacht_label,bestek_filename,bestek_uploaded_at")
+        .select("id,dossiernummer,klant_naam,schade_type,abex_index_gebruikt,ai_score,ai_aanbeveling,ai_verdacht_label,bestek_filename,bestek_uploaded_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
