@@ -18,10 +18,15 @@ const inputSchema = z.object({
         basisprijs: z.number(),
         maximale_basisprijs: z.number().nullable().optional(),
         abex_basisindex: z.number().nullable().optional(),
+        categorie: z.string().nullable().optional(),
+        catalogus_type: z.string().nullable().optional(),
+        catalogus_label: z.string().nullable().optional(),
+        bron_bestand: z.string().nullable().optional(),
       })
     )
     .default([]),
   abexActueel: z.number().int().positive(),
+  schadeType: z.string().nullable().optional(),
 });
 
 export type ExtractedLijn = {
